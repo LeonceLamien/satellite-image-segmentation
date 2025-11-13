@@ -6,7 +6,10 @@ DATASET:
 MODEL:
   # A parameter to control model complexity 
   # (i.e. number of trainable parameters)
-  NB_CHANNEL: 32
+  NB_CHANNEL: 64
+  DROPOUT: 0.2
+  USE_ATTENTION: FALSE
+        
   # Do not hesitate to add other parameters...
   
 TRAINING: 
