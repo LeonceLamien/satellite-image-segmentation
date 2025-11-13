@@ -7,6 +7,7 @@ __pycache__/
 *.so
 *.pkl
 .pkl
+Results/DefaultExp/_Weights/wghts.pkl
 # Distribution / packaging
 .Python
 build/
