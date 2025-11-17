@@ -1,12 +1,21 @@
 from Dataset.dataLoader import *
 from Dataset.makeGraph import *
 from Networks.Architectures.basicNetwork import *
-
+from Networks.Architectures.deepLab import *
+from sklearn.metrics import confusion_matrix
+import matplotlib.pyplot as plt
+import seaborn as sns
+        
 import numpy as np
 np.random.seed(2885)
 import os
 import copy
-
+from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score, jaccard_score
+from sklearn.metrics import roc_auc_score, roc_curve, auc
+from sklearn.preprocessing import label_binarize
+import matplotlib.pyplot as plt
+import seaborn as sns
+        
 import torch
 torch.manual_seed(2885)
 from torch.utils.data import DataLoader
@@ -44,6 +53,7 @@ class Network_Class:
     #                          experiement
     # --------------------------------------------------------------------------------
     def __init__(self, param, imgDirectory, maskDirectory, resultsPath):
+        print("resultsPath", resultsPath)
         # ----------------
         # USEFUL VARIABLES 
         # ----------------
@@ -64,7 +74,7 @@ class Network_Class:
         # TRAINING PARAMETERS
         # -------------------
         self.criterion = nn.CrossEntropyLoss()  # ← AJOUTÉ: pour segmentation multi-classes
-        self.optimizer = torch.optim.Adam(self.model.parameters(), lr=self.lr)  # ← AJOUTÉ
+        self.optimizer = torch.optim.SGD(self.model.parameters(), lr=self.lr)  # ← AJOUTÉ
 
         # ----------------------------------------------------
         # DATASET INITIALISATION (from the dataLoader.py file)
@@ -100,7 +110,7 @@ class Network_Class:
             
             for batch_idx, (images, masks, _, _) in enumerate(self.trainDataLoader):
                 images = images.to(self.device)
-                masks = masks.to(self.device).long()  # Conversion en long pour CrossEntropy
+                masks = masks.to(self.device).long()  
                 
                 # Forward pass
                 self.optimizer.zero_grad()
@@ -113,7 +123,6 @@ class Network_Class:
                 
                 running_loss += loss.item()
             
-            # Calcul de la loss moyenne sur l'epoch
             avg_train_loss = running_loss / len(self.trainDataLoader)
             self.train_losses.append(avg_train_loss)
             
@@ -123,7 +132,6 @@ class Network_Class:
             
             print(f"Epoch [{epoch+1}/{self.epoch}] - Train Loss: {avg_train_loss:.4f} - Val Loss: {val_loss:.4f}")
             
-            # Sauvegarde des meilleurs poids
             if val_loss < best_loss:
                 best_loss = val_loss
                 modelWts = copy.deepcopy(self.model.state_dict())
@@ -135,7 +143,7 @@ class Network_Class:
         wghtsPath  = self.resultsPath + '/_Weights/'
         createFolder(wghtsPath)
         torch.save(modelWts, wghtsPath + '/wghts.pkl')
-        print("✅ Training completed and weights saved!")
+        print("Training completed and weights saved!")
 
     def validate(self):
         """Validation step"""
@@ -172,20 +180,24 @@ class Network_Class:
         print(f"📊 Learning curves saved to {curves_path}")
 
     # -------------------------------------------------
-    # EVALUATION PROCEDURE (implémentation complète)
+    # EVALUATION PROCEDURE 
     # -------------------------------------------------
     def evaluate(self):
-        self.model.eval()  # ← CORRIGÉ: utiliser eval() au lieu de train(False)
-         
-        allMasks, allMasksPreds, allTileNames, allResizedImgs = [], [], [], []
+        self.model.eval()
         
-        with torch.no_grad():  # ← AJOUTÉ: désactive le calcul des gradients pour l'évaluation
+        allMasks, allMasksPreds, allTileNames, allResizedImgs = [], [], [], []
+        allOutputs = [] 
+        
+        with torch.no_grad():
             for (images, masks, tileNames, resizedImgs) in self.testDataLoader:
                 images = images.to(self.device)
                 outputs = self.model(images)
 
                 # Move back to CPU for processing
                 outputs = outputs.to('cpu')
+                
+                # Store raw outputs for ROC AUC calculation
+                allOutputs.extend(outputs.data.numpy())  
                 
                 # Get predicted masks (class with highest probability)
                 masksPreds = torch.argmax(outputs, dim=1)
@@ -198,46 +210,311 @@ class Network_Class:
         allMasks = np.array(allMasks)
         allMasksPreds = np.array(allMasksPreds)
         allResizedImgs = np.array(allResizedImgs)
+        allOutputs = np.array(allOutputs)  
             
         # Qualitative Evaluation
         savePath = os.path.join(self.resultsPath, "Test")
         createFolder(savePath)
         reconstruct_from_tiles(allResizedImgs, allMasksPreds, allMasks, allTileNames, savePath)
-    
-        # Quantitative Evaluation
-        self.quantitative_evaluation(allMasks, allMasksPreds)
 
-    def quantitative_evaluation(self, true_masks, pred_masks):
-        """Calculate quantitative metrics"""
+        # Quantitative Evaluation
+        self.quantitative_evaluation(allMasks, allMasksPreds, allOutputs)  
+
+        
+    def quantitative_evaluation(self, true_masks, pred_masks, outputs=None):
+        """Calculate quantitative metrics including ROC AUC and Confusion Matrix"""
         from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score, jaccard_score
+        from sklearn.metrics import roc_auc_score, roc_curve, auc, confusion_matrix
+        from sklearn.preprocessing import label_binarize
         import matplotlib.pyplot as plt
+        import seaborn as sns
         
         # Flatten arrays for metric calculation
         true_flat = true_masks.flatten()
         pred_flat = pred_masks.flatten()
         
-        # Calculate metrics
+        # Calculate basic metrics
         accuracy = accuracy_score(true_flat, pred_flat)
         precision = precision_score(true_flat, pred_flat, average='weighted', zero_division=0)
         recall = recall_score(true_flat, pred_flat, average='weighted', zero_division=0)
         f1 = f1_score(true_flat, pred_flat, average='weighted', zero_division=0)
         iou = jaccard_score(true_flat, pred_flat, average='weighted', zero_division=0)
         
-        print("\n📈 Quantitative Evaluation Results:")
+        print("\n Quantitative Evaluation Results:")
         print(f"Accuracy:  {accuracy:.4f}")
         print(f"Precision: {precision:.4f}")
         print(f"Recall:    {recall:.4f}")
         print(f"F1-Score:  {f1:.4f}")
         print(f"IoU:       {iou:.4f}")
         
-        # Save metrics to file
-        metrics_path = os.path.join(self.resultsPath, "test_metrics.txt")
-        with open(metrics_path, 'w') as f:
-            f.write("Quantitative Evaluation Results:\n")
-            f.write(f"Accuracy:  {accuracy:.4f}\n")
-            f.write(f"Precision: {precision:.4f}\n")
-            f.write(f"Recall:    {recall:.4f}\n")
-            f.write(f"F1-Score:  {f1:.4f}\n")
-            f.write(f"IoU:       {iou:.4f}\n")
+        # Calculate and plot confusion matrix
+        self.plot_confusion_matrix(true_flat, pred_flat)
         
-        print(f"✅ Metrics saved to {metrics_path}")  
+        # Calculate per-class metrics
+        self.calculate_per_class_metrics(true_flat, pred_flat)
+        
+        # ROC AUC Calculation
+        if outputs is not None:
+            print("\n📊 Calculating ROC AUC...")
+            
+            # Reshape outputs and true masks for ROC calculation
+            # outputs shape: [N, 5, H, W] -> [N*H*W, 5]
+            outputs_flat = outputs.transpose(0, 2, 3, 1).reshape(-1, 5)  # [N*H*W, 5]
+            true_flat_roc = true_masks.flatten()  # [N*H*W]
+            
+            # Binarize true labels for multi-class ROC
+            n_classes = 5
+            true_binary = label_binarize(true_flat_roc, classes=range(n_classes))
+            
+            # Calculate ROC AUC for each class
+            fpr = dict()
+            tpr = dict()
+            roc_auc = dict()
+            
+            for i in range(n_classes):
+                fpr[i], tpr[i], _ = roc_curve(true_binary[:, i], outputs_flat[:, i])
+                roc_auc[i] = auc(fpr[i], tpr[i])
+            
+            # Compute micro-average ROC curve and ROC area
+            fpr["micro"], tpr["micro"], _ = roc_curve(true_binary.ravel(), outputs_flat.ravel())
+            roc_auc["micro"] = auc(fpr["micro"], tpr["micro"])
+            
+            # Compute macro-average ROC curve and ROC area
+            all_fpr = np.unique(np.concatenate([fpr[i] for i in range(n_classes)]))
+            mean_tpr = np.zeros_like(all_fpr)
+            for i in range(n_classes):
+                mean_tpr += np.interp(all_fpr, fpr[i], tpr[i])
+            mean_tpr /= n_classes
+            fpr["macro"] = all_fpr
+            tpr["macro"] = mean_tpr
+            roc_auc["macro"] = auc(fpr["macro"], tpr["macro"])
+            
+            # Print ROC AUC results
+            print("\n🎯 ROC AUC Results:")
+            for i in range(n_classes):
+                print(f"Class {i} AUC: {roc_auc[i]:.4f}")
+            print(f"Micro-average AUC: {roc_auc['micro']:.4f}")
+            print(f"Macro-average AUC: {roc_auc['macro']:.4f}")
+            
+            # Plot ROC curves
+            self.plot_roc_curves(fpr, tpr, roc_auc, n_classes)
+            
+            # Add ROC AUC to metrics file
+            metrics_path = os.path.join(self.resultsPath, "test_metrics.txt")
+            with open(metrics_path, 'w') as f:
+                f.write("Quantitative Evaluation Results:\n")
+                f.write(f"Accuracy:  {accuracy:.4f}\n")
+                f.write(f"Precision: {precision:.4f}\n")
+                f.write(f"Recall:    {recall:.4f}\n")
+                f.write(f"F1-Score:  {f1:.4f}\n")
+                f.write(f"IoU:       {iou:.4f}\n")
+                f.write("\nROC AUC Results:\n")
+                for i in range(n_classes):
+                    f.write(f"Class {i} AUC: {roc_auc[i]:.4f}\n")
+                f.write(f"Micro-average AUC: {roc_auc['micro']:.4f}\n")
+                f.write(f"Macro-average AUC: {roc_auc['macro']:.4f}\n")
+            
+        else:
+            # Save basic metrics to file (if no outputs provided)
+            metrics_path = os.path.join(self.resultsPath, "test_metrics.txt")
+            with open(metrics_path, 'w') as f:
+                f.write("Quantitative Evaluation Results:\n")
+                f.write(f"Accuracy:  {accuracy:.4f}\n")
+                f.write(f"Precision: {precision:.4f}\n")
+                f.write(f"Recall:    {recall:.4f}\n")
+                f.write(f"F1-Score:  {f1:.4f}\n")
+                f.write(f"IoU:       {iou:.4f}\n")
+        
+        print(f" Metrics saved to {metrics_path}")
+
+    def plot_confusion_matrix(self, true_labels, pred_labels, class_names=None):
+        """Plot and save confusion matrix"""
+        from sklearn.metrics import confusion_matrix
+        import matplotlib.pyplot as plt
+        import seaborn as sns
+        
+        if class_names is None:
+            class_names = [f'Class {i}' for i in range(5)]
+        
+        # Calculate confusion matrix
+        cm = confusion_matrix(true_labels, pred_labels)
+        
+        # Create figure
+        plt.figure(figsize=(10, 8))
+        
+        # Plot confusion matrix with absolute counts
+        sns.heatmap(cm, annot=True, fmt='d', cmap='Blues', 
+                    xticklabels=class_names, 
+                    yticklabels=class_names,
+                    cbar_kws={'label': 'Number of Pixels'})
+        
+        plt.title('Confusion Matrix', fontsize=16, fontweight='bold')
+        plt.xlabel('Predicted Labels', fontsize=12)
+        plt.ylabel('True Labels', fontsize=12)
+        plt.xticks(rotation=45)
+        plt.yticks(rotation=0)
+        
+        plt.tight_layout()
+        
+        # Save the plot
+        cm_path = os.path.join(self.resultsPath, "confusion_matrix.png")
+        plt.savefig(cm_path, dpi=300, bbox_inches='tight')
+        plt.close()
+        
+        print(f"📊 Confusion matrix saved to {cm_path}")
+
+    def calculate_per_class_metrics(self, true_labels, pred_labels, class_names=None):
+        """Calculate and display per-class metrics"""
+        from sklearn.metrics import precision_score, recall_score, f1_score, jaccard_score
+        
+        if class_names is None:
+            class_names = [f'Class {i}' for i in range(5)]
+        
+        # Calculate per-class metrics
+        precision_per_class = precision_score(true_labels, pred_labels, average=None, zero_division=0)
+        recall_per_class = recall_score(true_labels, pred_labels, average=None, zero_division=0)
+        f1_per_class = f1_score(true_labels, pred_labels, average=None, zero_division=0)
+        iou_per_class = jaccard_score(true_labels, pred_labels, average=None, zero_division=0)
+        
+        print("\n🎯 Per-Class Metrics:")
+        print(f"{'Class':<10} {'Precision':<10} {'Recall':<10} {'F1-Score':<10} {'IoU':<10}")
+        print("-" * 50)
+        for i in range(len(class_names)):
+            print(f"{class_names[i]:<10} {precision_per_class[i]:<10.4f} {recall_per_class[i]:<10.4f} {f1_per_class[i]:<10.4f} {iou_per_class[i]:<10.4f}")
+        
+        # Save per-class metrics to file
+        metrics_path = os.path.join(self.resultsPath, "per_class_metrics.txt")
+        with open(metrics_path, 'w') as f:
+            f.write("Per-Class Metrics:\n")
+            f.write(f"{'Class':<10} {'Precision':<10} {'Recall':<10} {'F1-Score':<10} {'IoU':<10}\n")
+            f.write("-" * 50 + "\n")
+            for i in range(len(class_names)):
+                f.write(f"{class_names[i]:<10} {precision_per_class[i]:<10.4f} {recall_per_class[i]:<10.4f} {f1_per_class[i]:<10.4f} {iou_per_class[i]:<10.4f}\n")
+        
+        print(f"Per-class metrics saved to {metrics_path}")
+
+    def plot_normalized_confusion_matrix(self, true_labels, pred_labels, class_names=None):
+        """Plot normalized confusion matrix (optional)"""
+        
+        if class_names is None:
+            class_names = [f'Class {i}' for i in range(5)]
+        
+        # Calculate normalized confusion matrix
+        cm = confusion_matrix(true_labels, pred_labels)
+        cm_normalized = cm.astype('float') / cm.sum(axis=1)[:, np.newaxis]
+        
+        # Create figure
+        plt.figure(figsize=(10, 8))
+        
+        # Plot normalized confusion matrix
+        sns.heatmap(cm_normalized, annot=True, fmt='.2f', cmap='Blues',
+                    xticklabels=class_names, 
+                    yticklabels=class_names,
+                    cbar_kws={'label': 'Proportion'})
+        
+        plt.title('Normalized Confusion Matrix (by True Labels)', fontsize=16, fontweight='bold')
+        plt.xlabel('Predicted Labels', fontsize=12)
+        plt.ylabel('True Labels', fontsize=12)
+        plt.xticks(rotation=45)
+        plt.yticks(rotation=0)
+        
+        plt.tight_layout()
+        
+        # Save the plot
+        cm_norm_path = os.path.join(self.resultsPath, "confusion_matrix_normalized.png")
+        plt.savefig(cm_norm_path, dpi=300, bbox_inches='tight')
+        plt.close()
+        
+        print(f"📊 Normalized confusion matrix saved to {cm_norm_path}")
+        
+    
+    def plot_roc_curves(self, fpr, tpr, roc_auc, n_classes):
+        """Plot ROC curves for all classes"""
+        import matplotlib.pyplot as plt
+        import seaborn as sns
+        
+        # Set style
+        plt.style.use('default')
+        sns.set_palette("husl")
+        
+        fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(15, 6))
+        
+        # Plot individual classes
+        colors = plt.cm.Set1(np.linspace(0, 1, n_classes))
+        for i, color in zip(range(n_classes), colors):
+            ax1.plot(fpr[i], tpr[i], color=color, lw=2,
+                    label=f'Class {i} (AUC = {roc_auc[i]:.2f})')
+        
+        ax1.plot([0, 1], [0, 1], 'k--', lw=2, label='Random Classifier')
+        ax1.set_xlim([0.0, 1.0])
+        ax1.set_ylim([0.0, 1.05])
+        ax1.set_xlabel('False Positive Rate')
+        ax1.set_ylabel('True Positive Rate')
+        ax1.set_title('ROC Curves - Individual Classes')
+        ax1.legend(loc="lower right")
+        ax1.grid(True, alpha=0.3)
+        
+        # Plot micro and macro averages
+        ax2.plot(fpr["micro"], tpr["micro"],
+                label=f'Micro-average (AUC = {roc_auc["micro"]:.2f})',
+                color='deeppink', linestyle=':', linewidth=4)
+        
+        ax2.plot(fpr["macro"], tpr["macro"],
+                label=f'Macro-average (AUC = {roc_auc["macro"]:.2f})',
+                color='navy', linestyle=':', linewidth=4)
+        
+        for i in range(n_classes):
+            ax2.plot(fpr[i], tpr[i], lw=1, alpha=0.3)
+        
+        ax2.plot([0, 1], [0, 1], 'k--', lw=2, label='Random Classifier')
+        ax2.set_xlim([0.0, 1.0])
+        ax2.set_ylim([0.0, 1.05])
+        ax2.set_xlabel('False Positive Rate')
+        ax2.set_ylabel('True Positive Rate')
+        ax2.set_title('ROC Curves - Average Methods')
+        ax2.legend(loc="lower right")
+        ax2.grid(True, alpha=0.3)
+        
+        plt.tight_layout()
+        
+        # Save the plot
+        roc_path = os.path.join(self.resultsPath, "roc_curves.png")
+        plt.savefig(roc_path, dpi=300, bbox_inches='tight')
+        plt.close()
+        
+        print(f"📊 ROC curves saved to {roc_path}")
+
+    def calculate_validation_roc_auc(self):
+        """Calculate ROC AUC on validation set"""
+        self.model.eval()
+        all_outputs = []
+        all_targets = []
+        
+        with torch.no_grad():
+            for images, masks, _, _ in self.valDataLoader:
+                images = images.to(self.device)
+                masks = masks.to(self.device)
+                
+                outputs = self.model(images)
+                
+                all_outputs.append(outputs.cpu().numpy())
+                all_targets.append(masks.cpu().numpy())
+        
+        all_outputs = np.concatenate(all_outputs)
+        all_targets = np.concatenate(all_targets)
+        
+        # Reshape for ROC calculation
+        outputs_flat = all_outputs.transpose(0, 2, 3, 1).reshape(-1, 5)
+        targets_flat = all_targets.flatten()
+        
+        # Binarize targets
+        from sklearn.preprocessing import label_binarize
+        targets_binary = label_binarize(targets_flat, classes=range(5))
+        
+        # Calculate micro-average AUC
+        from sklearn.metrics import roc_auc_score
+        try:
+            micro_auc = roc_auc_score(targets_binary, outputs_flat, average='micro')
+            return micro_auc
+        except ValueError:
+            return 0.0

@@ -1,0 +1,15 @@
+Quantitative Evaluation Results:
+Accuracy:  0.7004
+Precision: 0.7278
+Recall:    0.7004
+F1-Score:  0.6989
+IoU:       0.5471
+
+ROC AUC Results:
+Class 0 AUC: 0.7104
+Class 1 AUC: 0.8842
+Class 2 AUC: 0.9305
+Class 3 AUC: 0.9173
+Class 4 AUC: 0.8915
+Micro-average AUC: 0.9255
+Macro-average AUC: 0.8668

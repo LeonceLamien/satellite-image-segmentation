@@ -1,30 +1,29 @@
-import torch.nn as nn
-import torch.nn.functional as F
-
-
-# # #####################################################################################
-
-# # CLASS DESCRIBING A DUMMY MODEL ARCHITECTURE
-# # An instance of Net has been created in the model.py file
-
-# # #####################################################################################
-
-# class Net(nn.Module):
-#     def __init__(self, param):
-#         super().__init__()
-#         self.nb_channel = param["MODEL"]["NB_CHANNEL"]
-#         self.conv1 = nn.Conv2d(3, self.nb_channel, 5, padding='same')
-#         self.conv2 = nn.Conv2d(self.nb_channel, self.nb_channel, 5, padding='same')
-#         self.conv3 = nn.Conv2d(self.nb_channel, 5, 5, padding='same')
-
-#     def forward(self, x):
-#         x = F.leaky_relu(self.conv1(x))
-#         x = F.leaky_relu(self.conv2(x))
-#         x = self.conv3(x)
-#         return x
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+
+# #####################################################################################
+
+# CLASS DESCRIBING A DUMMY MODEL ARCHITECTURE
+# An instance of Net has been created in the model.py file
+
+# #####################################################################################
+
+class Net(nn.Module):
+    def __init__(self, param):
+        super().__init__()
+        self.nb_channel = param["MODEL"]["NB_CHANNEL"]
+        self.conv1 = nn.Conv2d(3, self.nb_channel, 5, padding='same')
+        self.conv2 = nn.Conv2d(self.nb_channel, self.nb_channel, 5, padding='same')
+        self.conv3 = nn.Conv2d(self.nb_channel, 5, 5, padding='same')
+
+    def forward(self, x):
+        x = F.leaky_relu(self.conv1(x))
+        x = F.leaky_relu(self.conv2(x))
+        x = self.conv3(x)
+        return x
+
+
 
 class ImprovedU_net(nn.Module):
     def __init__(self, param):
@@ -79,7 +78,6 @@ class ImprovedU_net(nn.Module):
         )
 
     def _initialize_weights(self):
-        """Initialisation des poids pour améliorer la convergence"""
         for m in self.modules():
             if isinstance(m, nn.Conv2d):
                 nn.init.kaiming_normal_(m.weight, mode='fan_out', nonlinearity='relu')
@@ -128,7 +126,6 @@ class ImprovedU_net(nn.Module):
 
 
 class AttentionBlock(nn.Module):
-    """Bloc d'attention pour les skip connections"""
     def __init__(self, F_g, F_l):
         super(AttentionBlock, self).__init__()
         self.W_g = nn.Sequential(
