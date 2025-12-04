@@ -73,8 +73,8 @@ class Network_Class:
         # -------------------
         # TRAINING PARAMETERS
         # -------------------
-        self.criterion = nn.CrossEntropyLoss()  # ← AJOUTÉ: pour segmentation multi-classes
-        self.optimizer = torch.optim.SGD(self.model.parameters(), lr=self.lr)  # ← AJOUTÉ
+        self.criterion = nn.CrossEntropyLoss()
+        self.optimizer = torch.optim.Adam(self.model.parameters(), lr=self.lr)
 
         # ----------------------------------------------------
         # DATASET INITIALISATION (from the dataLoader.py file)
