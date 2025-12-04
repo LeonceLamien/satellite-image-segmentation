@@ -94,10 +94,11 @@ class Network_Class:
     # LOAD PRETRAINED WEIGHTS (to run evaluation without retraining the model...)
     # ---------------------------------------------------------------------------
     def loadWeights(self): 
-        self.model.load_state_dict(torch.load(self.resultsPath + '/_Weights/wghts.pkl', weights_only=True))
+        self.model.load_state_dict(torch.load(self.resultsPath + '/_Weights/wghts.pkl', 
+                                               map_location=self.device, weights_only=True))
 
     # -----------------------------------
-    # TRAINING LOOP (implémentation réelle)
+    # TRAINING LOOP
     # -----------------------------------
     def train(self): 
         best_loss = float('inf')
