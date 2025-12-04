@@ -68,7 +68,7 @@ class Network_Class:
         # -----------------------------------
         # NETWORK ARCHITECTURE INITIALISATION
         # -----------------------------------
-        self.model = ImprovedU_net(param).to(self.device)
+        self.model = DeepLabV3Plus(param).to(self.device)
 
         # -------------------
         # TRAINING PARAMETERS
