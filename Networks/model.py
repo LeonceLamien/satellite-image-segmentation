@@ -166,6 +166,9 @@ class Network_Class:
         """Plot and save learning curves"""
         import matplotlib.pyplot as plt
         
+        # Créer le dossier de résultats s'il n'existe pas
+        createFolder(self.resultsPath)
+        
         plt.figure(figsize=(10, 6))
         plt.plot(self.train_losses, label='Training Loss')
         plt.plot(self.val_losses, label='Validation Loss')
