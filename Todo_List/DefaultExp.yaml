@@ -18,6 +18,6 @@ TRAINING:
   EPOCH: 10
   BATCH_SIZE: 16
   # cpu (to run on cpu) or cuda (to run on gpu)
-  DEVICE: cpu 
+  DEVICE: cuda 
   # Do not hesitate to add other parameters...
 
