@@ -10,18 +10,17 @@ MODEL:
   NUM_CLASSES: 5
   
 TRAINING:
-  LEARNING_RATE: 0.0001              # ✅ Bon pour Adam
-  EPOCH: 50                          # 💡 Suggestion: augmenter à 50-100
-  BATCH_SIZE: 16                     # ✅ Parfait
+  LEARNING_RATE: 0.0001
+  EPOCH: 20
+  BATCH_SIZE: 16
   DEVICE: cuda
-  OPTIMIZER: Adam                    # ✅ Bon choix avec LR=0.0001
+  OPTIMIZER: AdamW
+  WEIGHT_DECAY: 0.0001
+
+  USE_SCHEDULER: true
+  SCHEDULER_TYPE: CosineAnnealingLR                   # Taux d'apprentissage minimum
+
   RANDOM_SEED: 2885
-  
-  # ============================================================================
-  # CLASS WEIGHTS - Gestion du déséquilibre de classes
-  # ============================================================================
-  # Activez ceci pour améliorer les performances sur les classes minoritaires!
-  # ============================================================================
-  
+
   USE_CLASS_WEIGHTS: true
-  CLASS_WEIGHT_METHOD: sqrt_inverse  # 'inverse_frequency' | 'sqrt_inverse' | 'log_inverse'
+  CLASS_WEIGHT_METHOD: sqrt_inverse

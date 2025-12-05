@@ -30,7 +30,7 @@ def showDataset(dataset, param):
 
     indices = random.sample(range(len(dataset)), numPairs)
 
-    fig, axes = plt.subplots(rows, cols*2, figsize=(6,6), dpi=150)
+    _, axes = plt.subplots(rows, cols*2, figsize=(6,6), dpi=150)
 
     cmap = mcolors.ListedColormap([
         "black",   # 0 = "other"
@@ -46,7 +46,7 @@ def showDataset(dataset, param):
         axes = axes.reshape(-1, 2)
 
     for i, idx in enumerate(indices):
-        image, mask, tileName, resizedImg = dataset[idx]
+        _, mask, tileName, resizedImg = dataset[idx]
 
         row = i // cols
         col = i % cols
@@ -131,10 +131,3 @@ def reconstruct_from_tiles(allResizedImgs, allMasksPreds, allMasks, allTileNames
     plt.imsave(os.path.join(savePath, "prediction.png"), fullPred, cmap=cmap)
     plt.imsave(os.path.join(savePath, "mask.png"), fullMask, cmap=cmap) 
     plt.imsave(os.path.join(savePath, "overlay.png"), overlay)
-
-
-
-
-
-    
-    

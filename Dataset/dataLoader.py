@@ -85,49 +85,71 @@ class LLNDataset(Dataset):
 def getTransforms_train(use_aug):
     resize_h, resize_w = 64, 64
 
-    # << YOUR DATASET NORMALIZATION VALUES >>
     mean = [0.324276, 0.338223, 0.318705]
     std  = [0.135364, 0.124776, 0.124514]
 
     if not use_aug:
-        # return only resize + normalize
         return alb.Compose([
             alb.Resize(resize_h, resize_w),
             alb.Normalize(mean=mean, std=std),
             alb.pytorch.transforms.ToTensorV2()
         ])
 
-    # FULL AUGMENTATION HARDCODED HERE
+    # FULL AUGMENTATION
     return alb.Compose([
+        # 1. RESIZE FIRST
         alb.Resize(resize_h, resize_w),
-
-        # GEOMETRY
+        
+        # 2. GEOMETRIC AUGMENTATIONS
         alb.HorizontalFlip(p=0.5),
         alb.VerticalFlip(p=0.5),
         alb.RandomRotate90(p=0.5),
-        alb.Rotate(limit=15, border_mode=cv2.BORDER_REFLECT_101, p=0.4),
-        alb.ShiftScaleRotate(
-            shift_limit=0.1, scale_limit=0.1, rotate_limit=10,
-            border_mode=cv2.BORDER_REFLECT_101, p=0.4
+        
+        alb.Rotate(
+            limit=15,
+            border_mode=cv2.BORDER_REFLECT_101,
+            p=0.4
         ),
-
-        # COLOR
-        alb.ColorJitter(brightness=0.2, contrast=0.2,
-                        saturation=0.2, hue=0.1, p=0.5),
-
-        # SHADOW (DISCRETE)
-        alb.RandomShadow(
-            shadow_roi=(0, 0.5, 1, 1),
-            num_shadows_limit=(1, 2),
-            shadow_half_radius=(0.05, 0.15),
-            shadow_dimension=3,
-            p=0.2
+        
+        alb.Affine(
+            shift_limit=0.1,
+            scale_limit=0.1,
+            rotate_limit=10,
+            border_mode=cv2.BORDER_REFLECT_101,
+            p=0.4
         ),
-
-        # BLUR (VERY LIGHT)
-        alb.GaussianBlur(blur_limit=(1, 2), p=0.10),
-
-        # NORMALIZE & TENSOR
+        
+        # 3. COLOR AUGMENTATIONS
+        alb.ColorJitter(
+            brightness=0.2,
+            contrast=0.2,
+            saturation=0.2,
+            hue=0.1,
+            p=0.5
+        ),
+        
+        # 4. BRIGHTNESS/CONTRAST
+        alb.RandomBrightnessContrast(
+            brightness_limit=0.2,
+            contrast_limit=0.2,
+            p=0.3
+        ),
+        
+        # 5. HUE/SATURATION (simulate different weather/seasons)
+        alb.HueSaturationValue(
+            hue_shift_limit=10,
+            sat_shift_limit=20,
+            val_shift_limit=10,
+            p=0.3
+        ),
+        
+        # 6. BLUR (atmospheric effects)
+        alb.GaussianBlur(
+            blur_limit=(3, 5),
+            p=0.15
+        ),
+        
+        # 8. NORMALIZE & CONVERT TO TENSOR
         alb.Normalize(mean=mean, std=std),
         alb.pytorch.transforms.ToTensorV2(),
     ])
@@ -136,8 +158,6 @@ def getTransforms_train(use_aug):
 def getTransforms_val_test():
     resize_h, resize_w = 64, 64
 
-    # DEFAULT NORMALIZATION FOR VAL/TEST
-    # use your aerial dataset stats
     mean = [0.324276, 0.338223, 0.318705]
     std  = [0.135364, 0.124776, 0.124514]
 
