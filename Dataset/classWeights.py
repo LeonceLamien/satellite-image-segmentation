@@ -14,7 +14,7 @@ from tqdm import tqdm
 
 
 def compute_class_weights(imgDirectory, maskDirectory, setName="train", 
-                         num_classes=5, method="inverse_frequency", beta=0.999):
+                         num_classes=5, method="inverse_frequency", beta=0.999, smoothing=1.0):
     """
     Calcule les poids des classes pour gérer le déséquilibre
     
@@ -29,6 +29,10 @@ def compute_class_weights(imgDirectory, maskDirectory, setName="train",
             * "sqrt_inverse": sqrt(1 / frequency) - plus doux
             * "log_inverse": log(total / frequency) - encore plus doux
         - beta (float): paramètre pour effective_samples (0.999 recommandé)
+        - smoothing (float): facteur d'adoucissement (0.5-1.0)
+            * 1.0 = pas d'adoucissement
+            * 0.7 = weights réduits de 30%
+            * 0.5 = weights très doux (recommandé si problème)
     
     OUTPUTS:
         - weights (torch.Tensor): poids pour chaque classe
@@ -106,6 +110,11 @@ def compute_class_weights(imgDirectory, maskDirectory, setName="train",
         raise ValueError(f"Unknown method: {method}. Choose from: "
                         "'inverse_frequency', 'effective_samples', 'sqrt_inverse', 'log_inverse'")
     
+    # Apply smoothing factor (brings weights closer to 1.0)
+    if smoothing < 1.0:
+        weights = 1.0 + (weights - 1.0) * smoothing
+        print(f"\n🔧 Smoothing applied: factor={smoothing:.2f}")
+    
     # Normalize weights (optionnel mais recommandé)
     weights = weights / weights.sum() * num_classes
     
@@ -162,6 +171,7 @@ def get_class_weights_from_config(param, imgDirectory, maskDirectory):
     num_classes = param["MODEL"].get("NUM_CLASSES", 5)
     method = param["TRAINING"].get("CLASS_WEIGHT_METHOD", "effective_samples")
     beta = param["TRAINING"].get("CLASS_WEIGHT_BETA", 0.999)
+    smoothing = param["TRAINING"].get("CLASS_WEIGHT_SMOOTHING", 1.0)  # 🆕
     
     weights, class_info = compute_class_weights(
         imgDirectory=imgDirectory,
@@ -169,7 +179,8 @@ def get_class_weights_from_config(param, imgDirectory, maskDirectory):
         setName="train",
         num_classes=num_classes,
         method=method,
-        beta=beta
+        beta=beta,
+        smoothing=smoothing  # 🆕
     )
     
     return weights

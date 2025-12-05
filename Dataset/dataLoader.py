@@ -95,46 +95,46 @@ def getTransforms_train(use_aug):
             alb.pytorch.transforms.ToTensorV2()
         ])
 
-    # FULL AUGMENTATION
+    # OPTIMIZED AUGMENTATION (léger mais efficace)
     return alb.Compose([
         # 1. RESIZE FIRST
         alb.Resize(resize_h, resize_w),
         
-        # 2. GEOMETRIC AUGMENTATIONS
+        # 2. GEOMETRIC AUGMENTATIONS (léger)
         alb.HorizontalFlip(p=0.5),
         alb.VerticalFlip(p=0.5),
-        alb.RandomRotate90(p=0.5),
+        alb.RandomRotate90(p=0.4),  # ✅ Réduit de 0.5
         
         alb.Rotate(
-            limit=15,
+            limit=10,  # ✅ Réduit de 15° à 10°
             border_mode=cv2.BORDER_REFLECT_101,
-            p=0.4
+            p=0.3  # ✅ Réduit de 0.4
         ),
         
-        alb.Affine(
-            shift_limit=0.1,
-            scale_limit=0.1,
-            rotate_limit=10,
+        alb.ShiftScaleRotate(
+            shift_limit=0.08,  # ✅ Réduit de 0.1
+            scale_limit=0.08,  # ✅ Réduit de 0.1
+            rotate_limit=8,    # ✅ Réduit de 10°
             border_mode=cv2.BORDER_REFLECT_101,
-            p=0.4
+            p=0.3
         ),
         
-        # 3. COLOR AUGMENTATIONS
+        # 3. COLOR AUGMENTATIONS (très léger)
         alb.ColorJitter(
-            brightness=0.2,
-            contrast=0.2,
-            saturation=0.15,
-            hue=0.05,
-            p=0.5
+            brightness=0.15,  # ✅ Réduit de 0.2
+            contrast=0.15,    # ✅ Réduit de 0.2
+            saturation=0.1,   # ✅ Réduit de 0.15
+            hue=0.03,         # ✅ Réduit de 0.05
+            p=0.4             # ✅ Réduit de 0.5
         ),
         
-        # 5. BLUR (atmospheric effects)
+        # 4. BLUR (atmospheric effects, très léger)
         alb.GaussianBlur(
-            blur_limit=(3, 7),
-            p=0.2
+            blur_limit=(3, 5),  # ✅ Réduit de (3,7)
+            p=0.15              # ✅ Réduit de 0.2
         ),
         
-        # 8. NORMALIZE & CONVERT TO TENSOR
+        # 5. NORMALIZE & CONVERT TO TENSOR
         alb.Normalize(mean=mean, std=std),
         alb.pytorch.transforms.ToTensorV2(),
     ])
