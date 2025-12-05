@@ -123,30 +123,15 @@ def getTransforms_train(use_aug):
         alb.ColorJitter(
             brightness=0.2,
             contrast=0.2,
-            saturation=0.2,
-            hue=0.1,
+            saturation=0.15,
+            hue=0.05,
             p=0.5
         ),
         
-        # 4. BRIGHTNESS/CONTRAST
-        alb.RandomBrightnessContrast(
-            brightness_limit=0.2,
-            contrast_limit=0.2,
-            p=0.3
-        ),
-        
-        # 5. HUE/SATURATION (simulate different weather/seasons)
-        alb.HueSaturationValue(
-            hue_shift_limit=10,
-            sat_shift_limit=20,
-            val_shift_limit=10,
-            p=0.3
-        ),
-        
-        # 6. BLUR (atmospheric effects)
+        # 5. BLUR (atmospheric effects)
         alb.GaussianBlur(
-            blur_limit=(3, 5),
-            p=0.15
+            blur_limit=(3, 7),
+            p=0.2
         ),
         
         # 8. NORMALIZE & CONVERT TO TENSOR
