@@ -95,74 +95,62 @@ def getTransforms_train(use_aug):
             alb.pytorch.transforms.ToTensorV2()
         ])
 
-    # ENHANCED AUGMENTATION - Équilibre entre robustesse et stabilité
+    # OPTIMIZED AUGMENTATION - Focus couleurs + géométrie
     return alb.Compose([
         # 1. RESIZE FIRST
         alb.Resize(resize_h, resize_w),
         
-        # 2. GEOMETRIC AUGMENTATIONS (focus frontières + petits objets)
+        # 2. GEOMETRIC AUGMENTATIONS
         alb.HorizontalFlip(p=0.5),
         alb.VerticalFlip(p=0.5),
         alb.RandomRotate90(p=0.5),
         
         alb.Rotate(
-            limit=20,  # Augmenté pour plus de variabilité
+            limit=25,  # Augmenté de 20→25
             border_mode=cv2.BORDER_REFLECT_101,
-            p=0.4
+            p=0.5  # Augmenté de 0.4→0.5
         ),
         
         alb.ShiftScaleRotate(
-            shift_limit=0.1,
-            scale_limit=0.15,  # Légèrement augmenté (zoom in/out)
-            rotate_limit=15,
+            shift_limit=0.12,  # Augmenté de 0.1→0.12
+            scale_limit=0.2,   # Augmenté de 0.15→0.2 (plus de zoom)
+            rotate_limit=20,   # Augmenté de 15→20
             border_mode=cv2.BORDER_REFLECT_101,
+            p=0.5  # Augmenté de 0.4→0.5
+        ),
+        
+        # 3. ELASTIC TRANSFORM (aide frontières)
+        alb.ElasticTransform(
+            alpha=60,  # Augmenté de 50→60
+            sigma=6,   # Augmenté de 5→6
+            p=0.25     # Augmenté de 0.2→0.25
+        ),
+        
+        # 4. COLOR AUGMENTATIONS (FOCUS PRINCIPAL)
+        alb.ColorJitter(
+            brightness=0.3,   # Augmenté de 0.2→0.3
+            contrast=0.3,     # Augmenté de 0.2→0.3
+            saturation=0.25,  # Augmenté de 0.15→0.25
+            hue=0.08,         # Augmenté de 0.05→0.08
+            p=0.6             # Augmenté de 0.5→0.6
+        ),
+        
+        # 5. HUE SATURATION VALUE (complémentaire)
+        alb.HueSaturationValue(
+            hue_shift_limit=15,   # Changements teinte
+            sat_shift_limit=25,   # Changements saturation
+            val_shift_limit=15,   # Changements luminosité
             p=0.4
         ),
         
-        # 3. ADVANCED GEOMETRIC (aide petits objets comme Class 1)
-        alb.ElasticTransform(
-            alpha=50,
-            sigma=5,
-            p=0.2
+        # 6. RANDOM BRIGHTNESS CONTRAST (focus luminosité)
+        alb.RandomBrightnessContrast(
+            brightness_limit=0.25,
+            contrast_limit=0.25,
+            p=0.4
         ),
         
-        # 4. COLOR AUGMENTATIONS (robustesse conditions lumière)
-        alb.ColorJitter(
-            brightness=0.2,
-            contrast=0.2,
-            saturation=0.15,
-            hue=0.05,
-            p=0.5
-        ),
-        
-        # 5. NOISE + BLUR (robustesse qualité image)
-        alb.OneOf([
-            alb.GaussNoise(var_limit=(10.0, 30.0), p=1.0),
-            alb.GaussianBlur(blur_limit=(3, 7), p=1.0),
-            alb.MedianBlur(blur_limit=5, p=1.0),
-        ], p=0.3),
-        
-        # 6. RANDOM SHADOW (simule occlusions)
-        alb.RandomShadow(
-            shadow_roi=(0, 0.5, 1, 1),
-            num_shadows_limit=(1, 2),
-            shadow_dimension=5,
-            p=0.15
-        ),
-        
-        # 7. COARSE DROPOUT (simule occlusions/missing data)
-        alb.CoarseDropout(
-            max_holes=4,
-            max_height=8,
-            max_width=8,
-            min_holes=1,
-            min_height=4,
-            min_width=4,
-            fill_value=0,
-            p=0.2
-        ),
-        
-        # 8. NORMALIZE & CONVERT TO TENSOR
+        # 7. NORMALIZE & CONVERT TO TENSOR
         alb.Normalize(mean=mean, std=std),
         alb.pytorch.transforms.ToTensorV2(),
     ])

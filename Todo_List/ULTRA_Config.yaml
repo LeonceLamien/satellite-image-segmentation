@@ -1,0 +1,36 @@
+# ============================================================
+# ULTRA CONFIG - Modèle maximum sans overfitting
+# ============================================================
+
+DATASET:
+  USE_AUGMENTATION: True
+
+MODEL:
+  ARCHITECTURE: DeepLabV3Plus
+  BACKBONE_CHANNELS: 384  # ÉNORME : x6 capacité vs baseline 64
+  ASPP_OUTPUT_CHANNELS: 512
+  ASPP_DROPOUT: 0.2  # Minimal dropout
+  ASPP_DILATIONS: [6, 12, 18]
+  NUM_CLASSES: 5
+  
+TRAINING:
+  LEARNING_RATE: 0.0005  # Plus petit pour gros modèle
+  EPOCH: 40
+  BATCH_SIZE: 12  # Réduit si OOM
+  DEVICE: cuda
+  OPTIMIZER: AdamW  # Meilleur que Adam pour gros modèles
+  WEIGHT_DECAY: 0.0002
+
+  USE_SCHEDULER: True
+  SCHEDULER_TYPE: ReduceLROnPlateau
+  
+  RANDOM_SEED: 2885
+
+  # FOCAL + DICE avec gamma très agressif
+  LOSS_TYPE: combined
+  FOCAL_GAMMA: 3.0  # Focus MAXIMUM sur difficiles
+  DICE_WEIGHT: 0.2  # 80% Focal + 20% Dice
+  
+  # Weights sélectifs
+  USE_CLASS_WEIGHTS: true
+  CLASS_WEIGHT_METHOD: selective
