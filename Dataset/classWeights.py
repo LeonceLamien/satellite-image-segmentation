@@ -86,7 +86,13 @@ def compute_class_weights(imgDirectory, maskDirectory, setName="train",
         # Class-Balanced Loss (CVPR 2019): w_i = (1 - beta) / (1 - beta^n_i)
         # Plus efficace pour les classes très déséquilibrées
         effective_num = 1.0 - np.power(beta, class_counts)
-        weights = (1.0 - beta) / (effective_num + 1e-6)
+        weights = (1.0 - beta) / np.maximum(effective_num, 1e-7)
+        
+        # Debug: afficher les valeurs intermédiaires
+        print(f"\n🔍 Debug effective_samples:")
+        print(f"   Beta: {beta}")
+        for i in range(num_classes):
+            print(f"   Class {i}: count={class_counts[i]}, effective_num={effective_num[i]:.6f}, raw_weight={weights[i]:.6f}")
         
     elif method == "sqrt_inverse":
         # Square root of inverse frequency (plus doux)

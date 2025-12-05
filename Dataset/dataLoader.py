@@ -106,9 +106,7 @@ def getTransforms_train(param):
         alb.Rotate(
             limit=aug_params.get("ROTATION_LIMIT", 15),
             border_mode=cv2.BORDER_CONSTANT,
-            value=0,
-            mask_value=0,
-            p=aug_params.get("ROTATION_PROB", 0.3)
+            p=aug_params.get("ROTATION_PROB", 0.4)
         ),
         
         # Combined shift, scale, rotate (simulates camera zoom/displacement)
@@ -117,8 +115,6 @@ def getTransforms_train(param):
             scale_limit=aug_params.get("SCALE_LIMIT", 0.1),
             rotate_limit=aug_params.get("SHIFT_SCALE_ROTATE_LIMIT", 10),
             border_mode=cv2.BORDER_CONSTANT,
-            value=0,
-            mask_value=0,
             p=aug_params.get("SHIFT_SCALE_ROTATE_PROB", 0.4)
         ),
         
@@ -136,10 +132,7 @@ def getTransforms_train(param):
         alb.ElasticTransform(
             alpha=1,
             sigma=50,
-            alpha_affine=50,
             border_mode=cv2.BORDER_CONSTANT,
-            value=0,
-            mask_value=0,
             p=aug_params.get("ELASTIC_PROB", 0.0)
         ),
         
@@ -148,23 +141,21 @@ def getTransforms_train(param):
             max_holes=aug_params.get("COARSE_DROPOUT_HOLES", 4),
             max_height=int(resize_h * aug_params.get("COARSE_DROPOUT_SIZE", 0.05)),
             max_width=int(resize_w * aug_params.get("COARSE_DROPOUT_SIZE", 0.05)),
-            fill_value=0,
-            mask_fill_value=0,
             p=aug_params.get("COARSE_DROPOUT_PROB", 0.0)
         ),
         
         # Random Shadow - simulates cloud shadows on aerial images
         alb.RandomShadow(
             shadow_roi=(0, 0.5, 1, 1),
-            num_shadows_lower=1,
-            num_shadows_upper=2,
+            num_shadows_limit=(1, 2),
             shadow_dimension=5,
             p=aug_params.get("SHADOW_PROB", 0.0)
         ),
         
         # 5. NOISE AUGMENTATIONS (simulates sensor quality)
         alb.GaussNoise(
-            var_limit=aug_params.get("GAUSS_NOISE_VAR", (10.0, 50.0)),
+            var_limit=(aug_params.get("GAUSS_NOISE_VAR", [10.0, 50.0])[0], 
+                       aug_params.get("GAUSS_NOISE_VAR", [10.0, 50.0])[1]),
             p=aug_params.get("GAUSS_NOISE_PROB", 0.2)
         ),
         

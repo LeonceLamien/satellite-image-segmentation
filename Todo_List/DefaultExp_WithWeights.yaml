@@ -79,8 +79,4 @@ TRAINING:
   # ============================================================================
   
   USE_CLASS_WEIGHTS: true
-  CLASS_WEIGHT_METHOD: effective_samples  # 'effective_samples' (recommandé) | 'inverse_frequency' | 'sqrt_inverse' | 'log_inverse'
-  CLASS_WEIGHT_BETA: 0.999               # Pour effective_samples (0.99-0.9999)
-  
-  # Ou spécifiez manuellement (décommentez pour override auto-compute):
-  # CLASS_WEIGHTS: [0.5, 10.0, 1.0, 2.0, 1.5]
+  CLASS_WEIGHT_METHOD: sqrt_inverse  # 'inverse_frequency' | 'sqrt_inverse' | 'log_inverse'
