@@ -32,4 +32,4 @@ TRAINING:
   
   # Class weights légers (seulement pour Focal Loss)
   USE_CLASS_WEIGHTS: true
-  CLASS_WEIGHT_METHOD: selective  # Ne pondère QUE classes < 5%
+  CLASS_WEIGHT_METHOD: selective  # Ne pondère QUE classes < 10% (C1, C2, C3)

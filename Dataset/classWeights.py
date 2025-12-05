@@ -107,10 +107,10 @@ def compute_class_weights(imgDirectory, maskDirectory, setName="train",
         weights = np.log(total_pixels / (class_counts + 1e-6))
         
     elif method == "selective":
-        # 🆕 SELECTIVE: Ne pondère QUE les classes très rares (< 5%)
+        # 🆕 SELECTIVE: Ne pondère QUE les classes rares (< 10%)
         # Les classes majoritaires gardent weight=1.0
         weights = np.ones(num_classes, dtype=np.float32)
-        threshold = 0.05  # Classes avec < 5% des pixels
+        threshold = 0.15  # Classes avec < 10% des pixels
         
         print(f"\n🎯 Selective weighting (threshold={threshold*100}%):")
         for i in range(num_classes):
