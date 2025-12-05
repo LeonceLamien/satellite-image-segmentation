@@ -95,46 +95,74 @@ def getTransforms_train(use_aug):
             alb.pytorch.transforms.ToTensorV2()
         ])
 
-    # OPTIMIZED AUGMENTATION (léger mais efficace)
+    # ENHANCED AUGMENTATION - Équilibre entre robustesse et stabilité
     return alb.Compose([
         # 1. RESIZE FIRST
         alb.Resize(resize_h, resize_w),
         
-        # 2. GEOMETRIC AUGMENTATIONS (léger)
+        # 2. GEOMETRIC AUGMENTATIONS (focus frontières + petits objets)
         alb.HorizontalFlip(p=0.5),
         alb.VerticalFlip(p=0.5),
-        alb.RandomRotate90(p=0.4),  # ✅ Réduit de 0.5
+        alb.RandomRotate90(p=0.5),
         
         alb.Rotate(
-            limit=10,  # ✅ Réduit de 15° à 10°
+            limit=20,  # Augmenté pour plus de variabilité
             border_mode=cv2.BORDER_REFLECT_101,
-            p=0.3  # ✅ Réduit de 0.4
+            p=0.4
         ),
         
         alb.ShiftScaleRotate(
-            shift_limit=0.08,  # ✅ Réduit de 0.1
-            scale_limit=0.08,  # ✅ Réduit de 0.1
-            rotate_limit=8,    # ✅ Réduit de 10°
+            shift_limit=0.1,
+            scale_limit=0.15,  # Légèrement augmenté (zoom in/out)
+            rotate_limit=15,
             border_mode=cv2.BORDER_REFLECT_101,
-            p=0.3
+            p=0.4
         ),
         
-        # 3. COLOR AUGMENTATIONS (très léger)
+        # 3. ADVANCED GEOMETRIC (aide petits objets comme Class 1)
+        alb.ElasticTransform(
+            alpha=50,
+            sigma=5,
+            p=0.2
+        ),
+        
+        # 4. COLOR AUGMENTATIONS (robustesse conditions lumière)
         alb.ColorJitter(
-            brightness=0.15,  # ✅ Réduit de 0.2
-            contrast=0.15,    # ✅ Réduit de 0.2
-            saturation=0.1,   # ✅ Réduit de 0.15
-            hue=0.03,         # ✅ Réduit de 0.05
-            p=0.4             # ✅ Réduit de 0.5
+            brightness=0.2,
+            contrast=0.2,
+            saturation=0.15,
+            hue=0.05,
+            p=0.5
         ),
         
-        # 4. BLUR (atmospheric effects, très léger)
-        alb.GaussianBlur(
-            blur_limit=(3, 5),  # ✅ Réduit de (3,7)
-            p=0.15              # ✅ Réduit de 0.2
+        # 5. NOISE + BLUR (robustesse qualité image)
+        alb.OneOf([
+            alb.GaussNoise(var_limit=(10.0, 30.0), p=1.0),
+            alb.GaussianBlur(blur_limit=(3, 7), p=1.0),
+            alb.MedianBlur(blur_limit=5, p=1.0),
+        ], p=0.3),
+        
+        # 6. RANDOM SHADOW (simule occlusions)
+        alb.RandomShadow(
+            shadow_roi=(0, 0.5, 1, 1),
+            num_shadows_limit=(1, 2),
+            shadow_dimension=5,
+            p=0.15
         ),
         
-        # 5. NORMALIZE & CONVERT TO TENSOR
+        # 7. COARSE DROPOUT (simule occlusions/missing data)
+        alb.CoarseDropout(
+            max_holes=4,
+            max_height=8,
+            max_width=8,
+            min_holes=1,
+            min_height=4,
+            min_width=4,
+            fill_value=0,
+            p=0.2
+        ),
+        
+        # 8. NORMALIZE & CONVERT TO TENSOR
         alb.Normalize(mean=mean, std=std),
         alb.pytorch.transforms.ToTensorV2(),
     ])

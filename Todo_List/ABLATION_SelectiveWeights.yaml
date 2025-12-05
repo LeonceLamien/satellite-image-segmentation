@@ -1,0 +1,29 @@
+# ============================================================
+# TEST 2: Weights sélectifs (seulement Class 1 et 2)
+# ============================================================
+
+DATASET:
+  USE_AUGMENTATION: True
+
+MODEL:
+  ARCHITECTURE: DeepLabV3Plus
+  BACKBONE_CHANNELS: 128
+  ASPP_OUTPUT_CHANNELS: 256
+  ASPP_DROPOUT: 0.3
+  ASPP_DILATIONS: [6, 12, 18]
+  NUM_CLASSES: 5
+  
+TRAINING:
+  LEARNING_RATE: 0.001
+  EPOCH: 25
+  BATCH_SIZE: 16
+  DEVICE: cuda
+  OPTIMIZER: Adam
+  USE_SCHEDULER: True
+  SCHEDULER_TYPE: ReduceLROnPlateau
+  RANDOM_SEED: 2885
+
+  # CrossEntropy avec weights SÉLECTIFS
+  LOSS_TYPE: crossentropy
+  USE_CLASS_WEIGHTS: true
+  CLASS_WEIGHT_METHOD: selective  # Class 0,3,4 = 1.0, Class 1,2 pondérés

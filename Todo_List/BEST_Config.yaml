@@ -1,0 +1,35 @@
+# ============================================================
+# CONFIGURATION OPTIMALE - Toutes les améliorations appliquées
+# ============================================================
+
+DATASET:
+  USE_AUGMENTATION: True  # Augmentation avancée activée
+
+MODEL:
+  ARCHITECTURE: DeepLabV3Plus
+  BACKBONE_CHANNELS: 128  # Augmenté de 64 → 128 (plus de capacité)
+  ASPP_OUTPUT_CHANNELS: 256
+  ASPP_DROPOUT: 0.3  # Réduit de 0.5 → 0.3 (moins de régularisation)
+  ASPP_DILATIONS: [6, 12, 18]  # Dilations gagnantes
+  NUM_CLASSES: 5
+  
+TRAINING:
+  LEARNING_RATE: 0.001
+  EPOCH: 30  # Augmenté de 20 → 30
+  BATCH_SIZE: 16
+  DEVICE: cuda
+  OPTIMIZER: Adam
+
+  USE_SCHEDULER: True
+  SCHEDULER_TYPE: ReduceLROnPlateau  # Adaptive LR scheduling
+  
+  RANDOM_SEED: 2885
+
+  # FOCAL + DICE LOSS (meilleur que CrossEntropy)
+  LOSS_TYPE: combined
+  FOCAL_GAMMA: 2.0  # Focus sur exemples difficiles
+  DICE_WEIGHT: 0.3  # 70% Focal + 30% Dice
+  
+  # Class weights légers (seulement pour Focal Loss)
+  USE_CLASS_WEIGHTS: true
+  CLASS_WEIGHT_METHOD: selective  # Ne pondère QUE classes < 5%

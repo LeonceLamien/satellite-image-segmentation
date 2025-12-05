@@ -3,6 +3,7 @@ from Dataset.makeGraph import *
 from Dataset.classWeights import get_class_weights_from_config
 from Networks.Architectures.basicNetwork import *
 from Networks.Architectures.deepLab import *
+from Networks.losses import get_loss_from_config
 
 import numpy as np
 import os
@@ -103,10 +104,10 @@ class Network_Class:
         self.model = self.model.to(self.device)
 
         # =====================================
-        # LOSS & OPTIMIZER
+        # LOSS FUNCTION (Support multiple loss types)
         # =====================================
-        # Compute class weights for handling class imbalance
         use_class_weights = param["TRAINING"].get("USE_CLASS_WEIGHTS", False)
+        class_weights = None
         
         if use_class_weights:
             print("\n" + "="*60)
@@ -116,13 +117,13 @@ class Network_Class:
             class_weights = get_class_weights_from_config(param, imgDirectory, maskDirectory)
             class_weights = class_weights.to(self.device)
             
-            print(f"\n✅ Using Weighted CrossEntropyLoss with weights:")
+            print(f"\n✅ Computed class weights:")
             print(f"   {class_weights.cpu().numpy()}\n")
-            
-            self.criterion = nn.CrossEntropyLoss(weight=class_weights)
-        else:
-            print("\nUsing standard CrossEntropyLoss (no class weights)\n")
-            self.criterion = nn.CrossEntropyLoss()
+        
+        # Get loss function from config (supports CrossEntropy, Focal, Dice, Combined)
+        self.criterion = get_loss_from_config(param, class_weights)
+        loss_type = param["TRAINING"].get("LOSS_TYPE", "crossentropy")
+        print(f"Loss function: {loss_type}\n")
         
         optimizer_name = param["TRAINING"].get("OPTIMIZER", "Adam")
         if optimizer_name == "Adam":
