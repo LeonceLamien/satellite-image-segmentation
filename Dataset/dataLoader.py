@@ -86,8 +86,8 @@ def getTransforms_train(use_aug):
     resize_h, resize_w = 64, 64
 
     # << YOUR DATASET NORMALIZATION VALUES >>
-    mean = [0.34311995, 0.35981545, 0.33854547]
-    std  = [0.10209841, 0.09479538, 0.09755876]
+    mean = [0.324276, 0.338223, 0.318705]
+    std  = [0.135364, 0.124776, 0.124514]
 
     if not use_aug:
         # return only resize + normalize
@@ -138,8 +138,8 @@ def getTransforms_val_test():
 
     # DEFAULT NORMALIZATION FOR VAL/TEST
     # use your aerial dataset stats
-    mean = [0.34311995, 0.35981545, 0.33854547]
-    std  = [0.10209841, 0.09479538, 0.09755876]
+    mean = [0.324276, 0.338223, 0.318705]
+    std  = [0.135364, 0.124776, 0.124514]
 
     return alb.Compose([
         alb.Resize(resize_h, resize_w),
