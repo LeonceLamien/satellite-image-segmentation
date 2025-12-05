@@ -106,9 +106,25 @@ def compute_class_weights(imgDirectory, maskDirectory, setName="train",
         # Logarithmic inverse (encore plus doux)
         weights = np.log(total_pixels / (class_counts + 1e-6))
         
+    elif method == "selective":
+        # 🆕 SELECTIVE: Ne pondère QUE les classes très rares (< 5%)
+        # Les classes majoritaires gardent weight=1.0
+        weights = np.ones(num_classes, dtype=np.float32)
+        threshold = 0.05  # Classes avec < 5% des pixels
+        
+        print(f"\n🎯 Selective weighting (threshold={threshold*100}%):")
+        for i in range(num_classes):
+            if class_frequencies[i] < threshold:
+                # Classe rare : appliquer log_inverse
+                weights[i] = np.log(total_pixels / (class_counts[i] + 1e-6))
+                print(f"   Class {i}: {class_frequencies[i]*100:.2f}% → weighted (w={weights[i]:.3f})")
+            else:
+                # Classe majoritaire : garder 1.0
+                print(f"   Class {i}: {class_frequencies[i]*100:.2f}% → no weighting (w=1.0)")
+        
     else:
         raise ValueError(f"Unknown method: {method}. Choose from: "
-                        "'inverse_frequency', 'effective_samples', 'sqrt_inverse', 'log_inverse'")
+                        "'inverse_frequency', 'effective_samples', 'sqrt_inverse', 'log_inverse', 'selective'")
     
     # Apply smoothing factor (brings weights closer to 1.0)
     if smoothing < 1.0:

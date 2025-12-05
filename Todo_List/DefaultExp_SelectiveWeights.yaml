@@ -1,0 +1,26 @@
+DATASET:
+  USE_AUGMENTATION: True
+
+MODEL:
+  ARCHITECTURE: DeepLabV3Plus
+  BACKBONE_CHANNELS: 64
+  ASPP_OUTPUT_CHANNELS: 256
+  ASPP_DROPOUT: 0.5
+  ASPP_DILATIONS: [6, 12, 18]
+  NUM_CLASSES: 5
+  
+TRAINING:
+  LEARNING_RATE: 0.001
+  EPOCH: 20
+  BATCH_SIZE: 16
+  DEVICE: cuda
+  OPTIMIZER: Adam
+
+  USE_SCHEDULER: False
+
+  RANDOM_SEED: 2885
+
+  # SELECTIVE: Ne pondère QUE Class 1 (0.84%) et Class 2 (6.36%)
+  # Class 0, 3, 4 gardent weight=1.0 → Pas de confusion 0-4 !
+  USE_CLASS_WEIGHTS: true
+  CLASS_WEIGHT_METHOD: selective
