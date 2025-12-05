@@ -10,11 +10,11 @@ DATASET:
     VERTICAL_FLIP: 0.5
     ROTATE90: 0.5                    # Rotation 90/180/270°
     ROTATION_LIMIT: 15               # Free rotation ±15°
-    ROTATION_PROB: 0.3
+    ROTATION_PROB: 0.4               # ⬆️ Augmenté de 0.3 à 0.4
     SHIFT_LIMIT: 0.1                 # Shift ±10%
     SCALE_LIMIT: 0.1                 # Zoom ±10%
     SHIFT_SCALE_ROTATE_LIMIT: 10
-    SHIFT_SCALE_ROTATE_PROB: 0.3
+    SHIFT_SCALE_ROTATE_PROB: 0.4     # ⬆️ Augmenté de 0.3 à 0.4
     
     # Color augmentations
     BRIGHTNESS: 0.2                  # Brightness ±20%
@@ -22,15 +22,19 @@ DATASET:
     SATURATION: 0.2                  # Saturation ±20%
     HUE: 0.1                         # Hue ±10%
     COLOR_JITTER_PROB: 0.5
-    BRIGHTNESS_LIMIT: 0.2
-    CONTRAST_LIMIT: 0.2
-    BRIGHTNESS_CONTRAST_PROB: 0.3
     
     # Noise augmentations
     GAUSS_NOISE_VAR: [10.0, 50.0]
     GAUSS_NOISE_PROB: 0.2
     BLUR_LIMIT: [3, 3]
     BLUR_PROB: 0.15
+    
+    # Optional augmentations (set to 0 to disable)
+    ELASTIC_PROB: 0.0                # Elastic deformations (try 0.1)
+    COARSE_DROPOUT_PROB: 0.0         # Occlusions/clouds (try 0.15)
+    COARSE_DROPOUT_HOLES: 4
+    COARSE_DROPOUT_SIZE: 0.05
+    SHADOW_PROB: 0.0                 # Cloud shadows (try 0.2)
 
 MODEL:
   ARCHITECTURE: DeepLabV3Plus

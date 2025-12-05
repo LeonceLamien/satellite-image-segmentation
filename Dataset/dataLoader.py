@@ -119,7 +119,7 @@ def getTransforms_train(param):
             border_mode=cv2.BORDER_CONSTANT,
             value=0,
             mask_value=0,
-            p=aug_params.get("SHIFT_SCALE_ROTATE_PROB", 0.3)
+            p=aug_params.get("SHIFT_SCALE_ROTATE_PROB", 0.4)
         ),
         
         # 3. COLOR AUGMENTATIONS (simulates weather/lighting/season conditions)
@@ -131,14 +131,38 @@ def getTransforms_train(param):
             p=aug_params.get("COLOR_JITTER_PROB", 0.5)
         ),
         
-        # Simulates haze/fog (aerial images)
-        alb.RandomBrightnessContrast(
-            brightness_limit=aug_params.get("BRIGHTNESS_LIMIT", 0.2),
-            contrast_limit=aug_params.get("CONTRAST_LIMIT", 0.2),
-            p=aug_params.get("BRIGHTNESS_CONTRAST_PROB", 0.3)
+        # 4. OPTIONAL AUGMENTATIONS (elastic deformations, occlusions, shadows)
+        # Elastic transform - simulates slight terrain deformations
+        alb.ElasticTransform(
+            alpha=1,
+            sigma=50,
+            alpha_affine=50,
+            border_mode=cv2.BORDER_CONSTANT,
+            value=0,
+            mask_value=0,
+            p=aug_params.get("ELASTIC_PROB", 0.0)
         ),
         
-        # 4. NOISE AUGMENTATIONS (simulates sensor quality)
+        # Coarse Dropout - simulates clouds, shadows, occlusions
+        alb.CoarseDropout(
+            max_holes=aug_params.get("COARSE_DROPOUT_HOLES", 4),
+            max_height=int(resize_h * aug_params.get("COARSE_DROPOUT_SIZE", 0.05)),
+            max_width=int(resize_w * aug_params.get("COARSE_DROPOUT_SIZE", 0.05)),
+            fill_value=0,
+            mask_fill_value=0,
+            p=aug_params.get("COARSE_DROPOUT_PROB", 0.0)
+        ),
+        
+        # Random Shadow - simulates cloud shadows on aerial images
+        alb.RandomShadow(
+            shadow_roi=(0, 0.5, 1, 1),
+            num_shadows_lower=1,
+            num_shadows_upper=2,
+            shadow_dimension=5,
+            p=aug_params.get("SHADOW_PROB", 0.0)
+        ),
+        
+        # 5. NOISE AUGMENTATIONS (simulates sensor quality)
         alb.GaussNoise(
             var_limit=aug_params.get("GAUSS_NOISE_VAR", (10.0, 50.0)),
             p=aug_params.get("GAUSS_NOISE_PROB", 0.2)
@@ -149,7 +173,7 @@ def getTransforms_train(param):
             p=aug_params.get("BLUR_PROB", 0.15)
         ),
         
-        # 5. NORMALIZATION AND CONVERSION (always last)
+        # 6. NORMALIZATION AND CONVERSION (always last)
         alb.Normalize(mean=mean, std=std), 
         alb.pytorch.transforms.ToTensorV2(), 
     ]

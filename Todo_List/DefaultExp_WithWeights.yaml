@@ -1,0 +1,86 @@
+DATASET:
+  RESIZE_SHAPE: 64x64
+  NORMALIZE_MEAN: [0.485, 0.456, 0.406]
+  NORMALIZE_STD: [0.229, 0.224, 0.225]
+  NUM_WORKERS: 2
+  
+  # ============================================================================
+  # DATA AUGMENTATION - Optimized Configuration
+  # ============================================================================
+  # Vos paramètres sont EXCELLENTS ! Voici quelques suggestions d'amélioration:
+  # 
+  # ✅ Geometric augmentations: Parfait pour la segmentation aérienne
+  # ✅ Color augmentations: Bien calibré pour simuler différentes conditions
+  # ⚠️  Suggestions d'amélioration ci-dessous (commentées)
+  # ============================================================================
+  
+  AUGMENTATION:
+    # -------------------------------------------------------------------------
+    # GEOMETRIC AUGMENTATIONS (Critical for segmentation)
+    # -------------------------------------------------------------------------
+    HORIZONTAL_FLIP: 0.5              # ✅ Parfait
+    VERTICAL_FLIP: 0.5                # ✅ Parfait
+    ROTATE90: 0.5                     # ✅ Parfait - pas de perte d'info
+    
+    ROTATION_LIMIT: 15                # ✅ Bon compromis
+    ROTATION_PROB: 0.4                # ⬆️ Augmenté de 0.3 à 0.4
+    
+    SHIFT_LIMIT: 0.1                  # ✅ Bon (10%)
+    SCALE_LIMIT: 0.1                  # ✅ Bon (zoom ±10%)
+    SHIFT_SCALE_ROTATE_LIMIT: 10      # ✅ Conservateur, c'est bien
+    SHIFT_SCALE_ROTATE_PROB: 0.4      # ⬆️ Augmenté de 0.3 à 0.4
+    
+    # -------------------------------------------------------------------------
+    # COLOR AUGMENTATIONS (Simulates weather/lighting/season)
+    # -------------------------------------------------------------------------
+    BRIGHTNESS: 0.2                   # ✅ Parfait pour images aériennes
+    CONTRAST: 0.2                     # ✅ Parfait
+    SATURATION: 0.2                   # ✅ Parfait
+    HUE: 0.1                          # ✅ Conservateur, c'est bien
+    COLOR_JITTER_PROB: 0.5            # ✅ Parfait
+    
+    # -------------------------------------------------------------------------
+    # NOISE AUGMENTATIONS (Simulates sensor quality)
+    # -------------------------------------------------------------------------
+    GAUSS_NOISE_VAR: [10.0, 50.0]     # ✅ Bon range
+    GAUSS_NOISE_PROB: 0.2             # ✅ Conservateur, c'est bien
+    BLUR_LIMIT: [3, 3]                # ✅ Léger blur, parfait
+    BLUR_PROB: 0.15                   # ✅ Parfait
+    
+    # -------------------------------------------------------------------------
+    # OPTIONAL ADVANCED AUGMENTATIONS (Décommenter pour activer)
+    # -------------------------------------------------------------------------
+    ELASTIC_PROB: 0.1                 # Déformations élastiques (essayer 0.1)
+    COARSE_DROPOUT_PROB: 0.15         # Occlusions/nuages (essayer 0.15)
+    COARSE_DROPOUT_HOLES: 4           # Nombre de trous si activé
+    COARSE_DROPOUT_SIZE: 0.05         # Taille des trous (5% de l'image)
+    SHADOW_PROB: 0.2                  # Ombres de nuages (essayer 0.2)
+
+MODEL:
+  ARCHITECTURE: DeepLabV3Plus
+  BACKBONE_CHANNELS: 256
+  ASPP_OUTPUT_CHANNELS: 256
+  ASPP_DROPOUT: 0.5
+  ASPP_DILATIONS: [3, 6, 9]          # ✅ Bon pour 64x64 (plus petit que [6,12,18])
+  NUM_CLASSES: 5
+  
+TRAINING:
+  LEARNING_RATE: 0.0001              # ✅ Bon pour Adam
+  EPOCH: 50                          # 💡 Suggestion: augmenter à 50-100
+  BATCH_SIZE: 16                     # ✅ Parfait
+  DEVICE: cuda
+  OPTIMIZER: Adam                    # ✅ Bon choix avec LR=0.0001
+  RANDOM_SEED: 2885
+  
+  # ============================================================================
+  # CLASS WEIGHTS - Gestion du déséquilibre de classes
+  # ============================================================================
+  # Activez ceci pour améliorer les performances sur les classes minoritaires!
+  # ============================================================================
+  
+  USE_CLASS_WEIGHTS: true
+  CLASS_WEIGHT_METHOD: effective_samples  # 'effective_samples' (recommandé) | 'inverse_frequency' | 'sqrt_inverse' | 'log_inverse'
+  CLASS_WEIGHT_BETA: 0.999               # Pour effective_samples (0.99-0.9999)
+  
+  # Ou spécifiez manuellement (décommentez pour override auto-compute):
+  # CLASS_WEIGHTS: [0.5, 10.0, 1.0, 2.0, 1.5]

@@ -15,11 +15,80 @@ Tous ces paramètres sont utilisés quelle que soit l'architecture choisie.
 | `NORMALIZE_STD` | list[float] | `[0.229, 0.224, 0.225]` | Écart-type pour la normalisation (ImageNet par défaut) | ❌ Non |
 | `NUM_WORKERS` | int | `2` | Nombre de workers pour le DataLoader | ❌ Non |
 
+### Data Augmentation (Section AUGMENTATION)
+
+#### Augmentations Géométriques
+
+| Paramètre | Type | Valeur par défaut | Description | Obligatoire |
+|-----------|------|-------------------|-------------|-------------|
+| `HORIZONTAL_FLIP` | float | `0.5` | Probabilité de flip horizontal | ❌ Non |
+| `VERTICAL_FLIP` | float | `0.5` | Probabilité de flip vertical | ❌ Non |
+| `ROTATE90` | float | `0.5` | Probabilité de rotation par multiples de 90° | ❌ Non |
+| `ROTATION_LIMIT` | int | `15` | Angle max de rotation libre (±degrés) | ❌ Non |
+| `ROTATION_PROB` | float | `0.4` | Probabilité de rotation libre | ❌ Non |
+| `SHIFT_LIMIT` | float | `0.1` | Limite de translation (fraction de l'image) | ❌ Non |
+| `SCALE_LIMIT` | float | `0.1` | Limite de zoom (±fraction) | ❌ Non |
+| `SHIFT_SCALE_ROTATE_LIMIT` | int | `10` | Angle max pour transformation combinée | ❌ Non |
+| `SHIFT_SCALE_ROTATE_PROB` | float | `0.4` | Probabilité de transformation combinée | ❌ Non |
+
+#### Augmentations de Couleur
+
+| Paramètre | Type | Valeur par défaut | Description | Obligatoire |
+|-----------|------|-------------------|-------------|-------------|
+| `BRIGHTNESS` | float | `0.2` | Variation de luminosité (±fraction) | ❌ Non |
+| `CONTRAST` | float | `0.2` | Variation de contraste (±fraction) | ❌ Non |
+| `SATURATION` | float | `0.2` | Variation de saturation (±fraction) | ❌ Non |
+| `HUE` | float | `0.1` | Variation de teinte (±fraction) | ❌ Non |
+| `COLOR_JITTER_PROB` | float | `0.5` | Probabilité d'appliquer ColorJitter | ❌ Non |
+
+#### Augmentations de Bruit
+
+| Paramètre | Type | Valeur par défaut | Description | Obligatoire |
+|-----------|------|-------------------|-------------|-------------|
+| `GAUSS_NOISE_VAR` | list[float] | `[10.0, 50.0]` | Range de variance pour bruit gaussien | ❌ Non |
+| `GAUSS_NOISE_PROB` | float | `0.2` | Probabilité d'ajouter du bruit | ❌ Non |
+| `BLUR_LIMIT` | list[int] | `[3, 3]` | Limite du blur gaussien | ❌ Non |
+| `BLUR_PROB` | float | `0.15` | Probabilité d'appliquer le blur | ❌ Non |
+
+#### Augmentations Avancées (Optionnel)
+
+| Paramètre | Type | Valeur par défaut | Description | Obligatoire |
+|-----------|------|-------------------|-------------|-------------|
+| `ELASTIC_PROB` | float | `0.0` | Probabilité de déformations élastiques | ❌ Non |
+| `COARSE_DROPOUT_PROB` | float | `0.0` | Probabilité d'occlusions (simule nuages) | ❌ Non |
+| `COARSE_DROPOUT_HOLES` | int | `4` | Nombre de trous si COARSE_DROPOUT activé | ❌ Non |
+| `COARSE_DROPOUT_SIZE` | float | `0.05` | Taille des trous (fraction de l'image) | ❌ Non |
+| `SHADOW_PROB` | float | `0.0` | Probabilité d'ombres aléatoires | ❌ Non |
+
 ### Exemple DATASET
 ```yaml
 DATASET:
   RESIZE_SHAPE: 256x256
   NUM_WORKERS: 4
+  
+  AUGMENTATION:
+    # Géométriques
+    HORIZONTAL_FLIP: 0.5
+    VERTICAL_FLIP: 0.5
+    ROTATE90: 0.5
+    ROTATION_LIMIT: 15
+    ROTATION_PROB: 0.4
+    
+    # Couleurs
+    BRIGHTNESS: 0.2
+    CONTRAST: 0.2
+    SATURATION: 0.2
+    HUE: 0.1
+    COLOR_JITTER_PROB: 0.5
+    
+    # Bruit
+    GAUSS_NOISE_VAR: [10.0, 50.0]
+    GAUSS_NOISE_PROB: 0.2
+    
+    # Avancées (optionnel - mettre à 0 pour désactiver)
+    ELASTIC_PROB: 0.1
+    COARSE_DROPOUT_PROB: 0.15
+    SHADOW_PROB: 0.2
 ```
 
 ---
@@ -115,6 +184,20 @@ MODEL:
 
 ---
 
+### Gestion du Déséquilibre de Classes (Class Imbalance)
+
+| Paramètre | Type | Valeur par défaut | Description | Obligatoire |
+|-----------|------|-------------------|-------------|-------------|
+| `USE_CLASS_WEIGHTS` | bool | `false` | Active/désactive l'utilisation de poids pour les classes | ❌ Non |
+| `CLASS_WEIGHTS` | list[float] | - | Poids manuels pour chaque classe (ex: `[0.5, 10.0, 1.0, 2.0, 1.5]`) | ❌ Non* |
+| `CLASS_WEIGHT_METHOD` | string | `"effective_samples"` | Méthode de calcul automatique : `"inverse_frequency"`, `"effective_samples"`, `"sqrt_inverse"`, `"log_inverse"` | ❌ Non** |
+| `CLASS_WEIGHT_BETA` | float | `0.999` | Paramètre beta pour la méthode `"effective_samples"` | ❌ Non** |
+
+**\*Note :** Si `CLASS_WEIGHTS` est spécifié, il sera utilisé directement. Sinon, les poids seront calculés automatiquement.  
+**\*\*Note :** Utilisé uniquement si `USE_CLASS_WEIGHTS=true` et `CLASS_WEIGHTS` non spécifié.
+
+---
+
 ### Optimiseurs
 
 | Paramètre | Type | Valeur par défaut | Description | Obligatoire |
@@ -195,7 +278,7 @@ TRAINING:
   RANDOM_SEED: 42
 ```
 
-### Configuration DeepLabV3Plus avec Scheduler
+### Configuration DeepLabV3Plus avec Scheduler ET Class Weights
 ```yaml
 DATASET:
   RESIZE_SHAPE: 256x256
@@ -224,6 +307,11 @@ TRAINING:
   SCHEDULER_STEP_SIZE: 20
   SCHEDULER_GAMMA: 0.1
   RANDOM_SEED: 2885
+  
+  # Class Imbalance Handling
+  USE_CLASS_WEIGHTS: true
+  CLASS_WEIGHT_METHOD: effective_samples
+  CLASS_WEIGHT_BETA: 0.999
 ```
 
 ---
