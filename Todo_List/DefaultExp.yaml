@@ -1,53 +1,21 @@
----
 DATASET:
-  # Taille des images (format: HxW)
   RESIZE_SHAPE: 64x64
-  # Normalisation des images
   NORMALIZE_MEAN: [0.485, 0.456, 0.406]
   NORMALIZE_STD: [0.229, 0.224, 0.225]
-  # Nombre de workers pour le DataLoader
   NUM_WORKERS: 2
 
 MODEL:
-  # Architecture à utiliser: 'ImprovedU_net', 'DeepLabV3Plus', 'Net'
   ARCHITECTURE: DeepLabV3Plus
-  
-  # Paramètres U-Net amélioré
-  NB_CHANNEL: 64
-  DROPOUT: 0.2
-  USE_ATTENTION: False
-  
-  # Paramètres DeepLabV3Plus
-  BACKBONE_CHANNELS: 64
+  BACKBONE_CHANNELS: 256
   ASPP_OUTPUT_CHANNELS: 256
   ASPP_DROPOUT: 0.5
-  ASPP_DILATIONS: [6, 12, 18]
-  
-  # Nombre de classes de segmentation
+  ASPP_DILATIONS: [3, 6, 9]
   NUM_CLASSES: 5
   
 TRAINING:
-  # Paramètres d'entraînement
-  LEARNING_RATE: 0.001
+  LEARNING_RATE: 0.0001
   EPOCH: 30
   BATCH_SIZE: 16
-  
-  # Device: 'cpu' ou 'cuda'
   DEVICE: cuda
-  
-  # Optimizer: 'Adam', 'SGD', 'AdamW'
   OPTIMIZER: Adam
-  
-  # Paramètres optimizer SGD
-  MOMENTUM: 0.9
-  WEIGHT_DECAY: 0.0001
-  
-  # Learning rate scheduler
-  USE_SCHEDULER: False
-  SCHEDULER_TYPE: StepLR  # 'StepLR', 'ReduceLROnPlateau', 'CosineAnnealingLR'
-  SCHEDULER_STEP_SIZE: 10
-  SCHEDULER_GAMMA: 0.1
-  
-  # Random seed pour la reproductibilité
   RANDOM_SEED: 2885
-
