@@ -3,7 +3,6 @@ import albumentations as alb
 import cv2
 import os
 import copy
-import numpy as np
 import json
 from torch.utils.data import Dataset
 
@@ -83,17 +82,29 @@ class LLNDataset(Dataset):
 # Do not hesitate to consider other useful transforms!
 # -----------------------------------------------------------------------
 def getTransforms_train(param): 
-    imgTransformsList = [alb.Resize(height = int(param["DATASET"]["RESIZE_SHAPE"].split("x")[0]), 
-                                    width  = int(param["DATASET"]["RESIZE_SHAPE"].split("x")[1])), 
-                         alb.Normalize(mean=(0.485, 0.456, 0.406), std=(0.229, 0.224, 0.225)), 
-                         alb.pytorch.transforms.ToTensorV2(), 
-                        ]
+    # Récupération des paramètres depuis le fichier YAML
+    resize_h = int(param["DATASET"]["RESIZE_SHAPE"].split("x")[0])
+    resize_w = int(param["DATASET"]["RESIZE_SHAPE"].split("x")[1])
+    mean = param["DATASET"].get("NORMALIZE_MEAN", [0.485, 0.456, 0.406])
+    std = param["DATASET"].get("NORMALIZE_STD", [0.229, 0.224, 0.225])
+    
+    imgTransformsList = [
+        alb.Resize(height=resize_h, width=resize_w), 
+        alb.Normalize(mean=mean, std=std), 
+        alb.pytorch.transforms.ToTensorV2(), 
+    ]
     return alb.Compose(imgTransformsList)
 
 def getTransforms_val_test(param): 
-    imgTransformsList = [alb.Resize(height = int(param["DATASET"]["RESIZE_SHAPE"].split("x")[0]), 
-                                    width  = int(param["DATASET"]["RESIZE_SHAPE"].split("x")[1])), 
-                         alb.Normalize(mean=(0.485, 0.456, 0.406), std=(0.229, 0.224, 0.225)),  
-                         alb.pytorch.transforms.ToTensorV2(), 
-                        ]
+    # Récupération des paramètres depuis le fichier YAML
+    resize_h = int(param["DATASET"]["RESIZE_SHAPE"].split("x")[0])
+    resize_w = int(param["DATASET"]["RESIZE_SHAPE"].split("x")[1])
+    mean = param["DATASET"].get("NORMALIZE_MEAN", [0.485, 0.456, 0.406])
+    std = param["DATASET"].get("NORMALIZE_STD", [0.229, 0.224, 0.225])
+    
+    imgTransformsList = [
+        alb.Resize(height=resize_h, width=resize_w), 
+        alb.Normalize(mean=mean, std=std),  
+        alb.pytorch.transforms.ToTensorV2(), 
+    ]
     return alb.Compose(imgTransformsList)

@@ -2,26 +2,23 @@ from Dataset.dataLoader import *
 from Dataset.makeGraph import *
 from Networks.Architectures.basicNetwork import *
 from Networks.Architectures.deepLab import *
-from sklearn.metrics import confusion_matrix
-import matplotlib.pyplot as plt
-import seaborn as sns
-        
+
 import numpy as np
-np.random.seed(2885)
 import os
 import copy
-from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score, jaccard_score
-from sklearn.metrics import roc_auc_score, roc_curve, auc
-from sklearn.preprocessing import label_binarize
 import matplotlib.pyplot as plt
 import seaborn as sns
-        
+
 import torch
-torch.manual_seed(2885)
-from torch.utils.data import DataLoader
-from torch.utils.data import random_split
 import torch.nn as nn
 import torch.optim
+from torch.utils.data import DataLoader
+
+from sklearn.metrics import (
+    accuracy_score, precision_score, recall_score, f1_score, jaccard_score,
+    roc_auc_score, roc_curve, auc, confusion_matrix
+)
+from sklearn.preprocessing import label_binarize
 
 
 # --------------------------------------------------------------------------------
@@ -53,38 +50,135 @@ class Network_Class:
     #                          experiement
     # --------------------------------------------------------------------------------
     def __init__(self, param, imgDirectory, maskDirectory, resultsPath):
-        print("resultsPath", resultsPath)
-        # ----------------
-        # USEFUL VARIABLES 
-        # ----------------
+        # Initialisation du random seed pour la reproductibilité
+        seed = param["TRAINING"].get("RANDOM_SEED", 2885)
+        np.random.seed(seed)
+        torch.manual_seed(seed)
+        if torch.cuda.is_available():
+            torch.cuda.manual_seed(seed)
+            torch.cuda.manual_seed_all(seed)
+        
+        print(f"Results path: {resultsPath}")
+        print(f"Random seed: {seed}")
+        
+        # =====================================
+        # CONFIGURATION
+        # =====================================
+        self.param         = param
         self.imgDirectory  = imgDirectory
         self.maskDirectory = maskDirectory
         self.resultsPath   = resultsPath
-        self.epoch         = param["TRAINING"]["EPOCH"]
-        self.device        = param["TRAINING"]["DEVICE"]
-        self.lr            = param["TRAINING"]["LEARNING_RATE"]
-        self.batchSize     = param["TRAINING"]["BATCH_SIZE"]
+        
+        # Paramètres d'entraînement
+        self.epoch     = param["TRAINING"]["EPOCH"]
+        self.device    = param["TRAINING"]["DEVICE"]
+        self.lr        = param["TRAINING"]["LEARNING_RATE"]
+        self.batchSize = param["TRAINING"]["BATCH_SIZE"]
+        
+        # Paramètres du dataset
+        self.num_workers = param["DATASET"].get("NUM_WORKERS", 2)
+        self.num_classes = param["MODEL"].get("NUM_CLASSES", 5)
+        
+        print(f"Device: {self.device}")
+        print(f"Learning rate: {self.lr}")
+        print(f"Batch size: {self.batchSize}")
+        print(f"Epochs: {self.epoch}")
 
-        # -----------------------------------
-        # NETWORK ARCHITECTURE INITIALISATION
-        # -----------------------------------
-        self.model = DeepLabV3Plus(param).to(self.device)
+        # =====================================
+        # NETWORK ARCHITECTURE
+        # =====================================
+        architecture = param["MODEL"].get("ARCHITECTURE", "DeepLabV3Plus")
+        print(f"Architecture: {architecture}")
+        
+        if architecture == "DeepLabV3Plus":
+            self.model = DeepLabV3Plus(param)
+        elif architecture == "ImprovedU_net":
+            self.model = ImprovedU_net(param)
+        elif architecture == "Net":
+            self.model = Net(param)
+        else:
+            raise ValueError(f"Unknown architecture: {architecture}")
+        
+        self.model = self.model.to(self.device)
 
-        # -------------------
-        # TRAINING PARAMETERS
-        # -------------------
+        # =====================================
+        # LOSS & OPTIMIZER
+        # =====================================
         self.criterion = nn.CrossEntropyLoss()
-        self.optimizer = torch.optim.Adam(self.model.parameters(), lr=self.lr)
+        
+        optimizer_name = param["TRAINING"].get("OPTIMIZER", "Adam")
+        if optimizer_name == "Adam":
+            self.optimizer = torch.optim.Adam(self.model.parameters(), lr=self.lr)
+        elif optimizer_name == "SGD":
+            momentum = param["TRAINING"].get("MOMENTUM", 0.9)
+            weight_decay = param["TRAINING"].get("WEIGHT_DECAY", 0.0001)
+            self.optimizer = torch.optim.SGD(
+                self.model.parameters(), 
+                lr=self.lr, 
+                momentum=momentum, 
+                weight_decay=weight_decay
+            )
+        elif optimizer_name == "AdamW":
+            weight_decay = param["TRAINING"].get("WEIGHT_DECAY", 0.01)
+            self.optimizer = torch.optim.AdamW(
+                self.model.parameters(), 
+                lr=self.lr, 
+                weight_decay=weight_decay
+            )
+        else:
+            raise ValueError(f"Unknown optimizer: {optimizer_name}")
+        
+        print(f"Optimizer: {optimizer_name}")
+        
+        # Learning rate scheduler (optionnel)
+        self.scheduler = None
+        if param["TRAINING"].get("USE_SCHEDULER", False):
+            scheduler_type = param["TRAINING"].get("SCHEDULER_TYPE", "StepLR")
+            if scheduler_type == "StepLR":
+                step_size = param["TRAINING"].get("SCHEDULER_STEP_SIZE", 10)
+                gamma = param["TRAINING"].get("SCHEDULER_GAMMA", 0.1)
+                self.scheduler = torch.optim.lr_scheduler.StepLR(
+                    self.optimizer, step_size=step_size, gamma=gamma
+                )
+            elif scheduler_type == "ReduceLROnPlateau":
+                self.scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
+                    self.optimizer, mode='min', patience=5, factor=0.5
+                )
+            elif scheduler_type == "CosineAnnealingLR":
+                self.scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(
+                    self.optimizer, T_max=self.epoch
+                )
+            print(f"Scheduler: {scheduler_type}")
 
-        # ----------------------------------------------------
-        # DATASET INITIALISATION (from the dataLoader.py file)
-        # ----------------------------------------------------
-        self.dataSetTrain    = LLNDataset(imgDirectory, maskDirectory, "train", param)
-        self.dataSetVal      = LLNDataset(imgDirectory, maskDirectory, "val",   param)
-        self.dataSetTest     = LLNDataset(imgDirectory, maskDirectory, "test",  param)
-        self.trainDataLoader = DataLoader(self.dataSetTrain, batch_size=self.batchSize, shuffle=True,  num_workers=4)
-        self.valDataLoader   = DataLoader(self.dataSetVal,   batch_size=self.batchSize, shuffle=False, num_workers=4)
-        self.testDataLoader  = DataLoader(self.dataSetTest,  batch_size=self.batchSize, shuffle=False, num_workers=4)
+        # =====================================
+        # DATASET & DATALOADERS
+        # =====================================
+        self.dataSetTrain = LLNDataset(imgDirectory, maskDirectory, "train", param)
+        self.dataSetVal   = LLNDataset(imgDirectory, maskDirectory, "val",   param)
+        self.dataSetTest  = LLNDataset(imgDirectory, maskDirectory, "test",  param)
+        
+        self.trainDataLoader = DataLoader(
+            self.dataSetTrain, 
+            batch_size=self.batchSize, 
+            shuffle=True,  
+            num_workers=self.num_workers
+        )
+        self.valDataLoader = DataLoader(
+            self.dataSetVal, 
+            batch_size=self.batchSize, 
+            shuffle=False, 
+            num_workers=self.num_workers
+        )
+        self.testDataLoader = DataLoader(
+            self.dataSetTest, 
+            batch_size=self.batchSize, 
+            shuffle=False, 
+            num_workers=self.num_workers
+        )
+        
+        print(f"Train samples: {len(self.dataSetTrain)}")
+        print(f"Val samples: {len(self.dataSetVal)}")
+        print(f"Test samples: {len(self.dataSetTest)}")
 
         # Pour suivre les métriques
         self.train_losses = []
@@ -97,13 +191,18 @@ class Network_Class:
         self.model.load_state_dict(torch.load(self.resultsPath + '/_Weights/wghts.pkl', 
                                                map_location=self.device, weights_only=True))
 
-    # -----------------------------------
+    # =====================================
     # TRAINING LOOP
-    # -----------------------------------
+    # =====================================
     def train(self): 
         best_loss = float('inf')
+        best_epoch = 0
         
-        # train for a given number of epochs
+        print("\n" + "="*50)
+        print("Starting Training")
+        print("="*50 + "\n")
+        
+        # Train for a given number of epochs
         for epoch in range(self.epoch):
             # Training phase
             self.model.train()
@@ -111,7 +210,7 @@ class Network_Class:
             
             for batch_idx, (images, masks, _, _) in enumerate(self.trainDataLoader):
                 images = images.to(self.device)
-                masks = masks.to(self.device).long()  
+                masks = masks.to(self.device).long()
                 
                 # Forward pass
                 self.optimizer.zero_grad()
@@ -131,23 +230,39 @@ class Network_Class:
             val_loss = self.validate()
             self.val_losses.append(val_loss)
             
-            print(f"Epoch [{epoch+1}/{self.epoch}] - Train Loss: {avg_train_loss:.4f} - Val Loss: {val_loss:.4f}")
+            # Learning rate scheduling
+            if self.scheduler is not None:
+                if isinstance(self.scheduler, torch.optim.lr_scheduler.ReduceLROnPlateau):
+                    self.scheduler.step(val_loss)
+                else:
+                    self.scheduler.step()
+                current_lr = self.optimizer.param_groups[0]['lr']
+                print(f"Epoch [{epoch+1}/{self.epoch}] - Train Loss: {avg_train_loss:.4f} - Val Loss: {val_loss:.4f} - LR: {current_lr:.6f}")
+            else:
+                print(f"Epoch [{epoch+1}/{self.epoch}] - Train Loss: {avg_train_loss:.4f} - Val Loss: {val_loss:.4f}")
             
+            # Save best model
             if val_loss < best_loss:
                 best_loss = val_loss
+                best_epoch = epoch + 1
                 modelWts = copy.deepcopy(self.model.state_dict())
         
-        # Print learning curves
+        print(f"\nBest model at epoch {best_epoch} with validation loss: {best_loss:.4f}\n")
+        
+        # Plot learning curves
         self.plot_learning_curves()
         
         # Save the model weights
-        wghtsPath  = self.resultsPath + '/_Weights/'
+        wghtsPath = os.path.join(self.resultsPath, '_Weights')
         createFolder(wghtsPath)
-        torch.save(modelWts, wghtsPath + '/wghts.pkl')
-        print("Training completed and weights saved!")
+        torch.save(modelWts, os.path.join(wghtsPath, 'wghts.pkl'))
+        print(f"✅ Training completed and weights saved to {wghtsPath}")
 
+    # =====================================
+    # VALIDATION STEP
+    # =====================================
     def validate(self):
-        """Validation step"""
+        """Validation step during training"""
         self.model.eval()
         running_val_loss = 0.0
         
