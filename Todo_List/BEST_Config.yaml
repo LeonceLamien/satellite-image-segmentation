@@ -3,34 +3,21 @@
 # ============================================================
 
 DATASET:
-  USE_AUGMENTATION: True  # Augmentation avancée activée
+  USE_AUGMENTATION: True
 
 MODEL:
   ARCHITECTURE: DeepLabV3Plus
-  BACKBONE_CHANNELS: 256  # Augmenté 128 → 256 (x4 capacité vs baseline)
-  ASPP_OUTPUT_CHANNELS: 512  # Augmenté 256 → 512
-  ASPP_DROPOUT: 0.25  # Réduit 0.3 → 0.25 (encore moins de dropout)
-  ASPP_DILATIONS: [6, 12, 18]  # Dilations gagnantes
+  BACKBONE_CHANNELS: 384
+  ASPP_OUTPUT_CHANNELS: 512
+  ASPP_DROPOUT: 0.3
+  ASPP_DILATIONS: [6, 12, 18]
   NUM_CLASSES: 5
   
 TRAINING:
-  LEARNING_RATE: 0.0008  # Légèrement réduit pour modèle plus gros
-  EPOCH: 35  # Augmenté de 30 → 35
+  LEARNING_RATE: 0.0001
+  EPOCH: 20
   BATCH_SIZE: 16
   DEVICE: cuda
   OPTIMIZER: Adam
-  WEIGHT_DECAY: 0.0001  # Régularisation légère
-
-  USE_SCHEDULER: True
-  SCHEDULER_TYPE: ReduceLROnPlateau  # Adaptive LR scheduling
-  
   RANDOM_SEED: 2885
-
-  # FOCAL + DICE LOSS (meilleur que CrossEntropy)
-  LOSS_TYPE: combined
-  FOCAL_GAMMA: 2.5  # Augmenté de 2.0 → 2.5 (focus PLUS fort)
-  DICE_WEIGHT: 0.25  # Réduit 0.3 → 0.25 (plus de Focal)
-  
-  # Class weights légers (seulement pour Focal Loss)
-  USE_CLASS_WEIGHTS: true
-  CLASS_WEIGHT_METHOD: selective  # Ne pondère QUE classes < 10% (C1, C2, C3)
+  USE_CLASS_WEIGHTS: False
