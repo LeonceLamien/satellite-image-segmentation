@@ -1,0 +1,26 @@
+
+---
+DATASET:
+  # size of the images 
+  RESIZE_SHAPE: 64x64
+
+MODEL:
+  NB_CHANNEL: 64
+  DROPOUT: 0.2
+  USE_ATTENTION: FALSE
+  TASK: "colorization"
+        
+  # Do not hesitate to add other parameters...
+  
+TRAINING: 
+  LEARNING_RATE: 0.0001
+  EPOCH: 20
+  BATCH_SIZE: 16
+  # cpu (to run on cpu) or cuda (to run on gpu)
+  DEVICE: cpu 
+  # Do not hesitate to add other parameters...
+
+CLUSTERING:
+  N_CLUSTERS: 4
+  METHOD: "kmeans" 
+  RANDOM_STATE: 2885

@@ -1,0 +1,17 @@
+Cluster Analysis Results
+==================================================
+
+Number of clusters: 4
+Number of feature vectors: 472064
+
+Dominant class for each cluster:
+Cluster 0: Class 4 (53.1%)
+Cluster 1: Class 4 (47.6%)
+Cluster 2: Class 0 (44.2%)
+Cluster 3: Class 4 (38.7%)
+
+Cluster-Class Correspondence Matrix:
+Cluster 0: 0.339 0.011 0.050 0.069 0.531
+Cluster 1: 0.342 0.011 0.044 0.127 0.476
+Cluster 2: 0.442 0.003 0.133 0.123 0.300
+Cluster 3: 0.385 0.005 0.086 0.138 0.387

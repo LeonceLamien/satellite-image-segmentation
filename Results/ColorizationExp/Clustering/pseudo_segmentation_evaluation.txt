@@ -1,0 +1,11 @@
+Pseudo-Segmentation Evaluation
+==================================================
+
+Adjusted Rand Index (ARI): 0.0100
+Normalized Mutual Information (NMI): 0.0180
+
+Optimal cluster-to-class mapping:
+Cluster 0 -> Class 4
+Cluster 1 -> Class 0
+Cluster 2 -> Class 3
+Cluster 3 -> Class 2

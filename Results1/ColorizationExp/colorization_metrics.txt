@@ -1,0 +1,3 @@
+Colorization Evaluation Results:
+MSE Loss: 0.6598
+PSNR: 1.81 dB
