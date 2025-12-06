@@ -2,12 +2,13 @@ Test Set Cluster Analysis
 ==================================================
 
 Total feature vectors: 196608
-Number of clusters: 4
+Number of clusters: 5
 
 Cluster purity:
 Cluster    Purity     Size       Dominant Class 
 ---------------------------------------------
-2          0.6288     12251      0              
-3          0.6107     73021      0              
-1          0.6059     106270     0              
-0          0.4700     5066       0              
+2          0.6456     42772      0              
+4          0.6314     64118      0              
+1          0.6006     38910      0              
+0          0.5478     27120      0              
+3          0.5378     23688      0              

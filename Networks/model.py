@@ -1,271 +1,29 @@
-# from Dataset.dataLoader import *
-# from Dataset.makeGraph import *
-# from Networks.Architectures.basicNetwork import *
-# from Networks.Architectures.deepLab import *
-# from sklearn.metrics import confusion_matrix
-# import matplotlib.pyplot as plt
-# import seaborn as sns
-        
-# import numpy as np
-# np.random.seed(2885)
-# import os
-# import copy
-# from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score, jaccard_score
-# from sklearn.metrics import roc_auc_score, roc_curve, auc
-# from sklearn.preprocessing import label_binarize
-# import matplotlib.pyplot as plt
-# import seaborn as sns
-        
-# import torch
-# torch.manual_seed(2885)
-# from torch.utils.data import DataLoader
-# from torch.utils.data import random_split
-# import torch.nn as nn
-# import torch.optim
-
-
-# from Dataset.dataLoader import *
-# from Dataset.makeGraph import *
-# from Networks.Architectures.basicNetwork import *
-# from Networks.Architectures.deepLab import *
-# from sklearn.metrics import confusion_matrix
-# import matplotlib.pyplot as plt
-# import seaborn as sns
-        
-# import numpy as np
-# np.random.seed(2885)
-# import os
-# import copy
-# from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score, jaccard_score
-# from sklearn.metrics import roc_auc_score, roc_curve, auc
-# from sklearn.preprocessing import label_binarize
-# import matplotlib.pyplot as plt
-# import seaborn as sns
-        
-# import torch
-# torch.manual_seed(2885)
-# from torch.utils.data import DataLoader
-# from torch.utils.data import random_split
-# import torch.nn as nn
-# import torch.optim
-
-# import cv2
-
-
-# # --------------------------------------------------------------------------------
-# # CREATE A FOLDER IF IT DOES NOT EXIST
-# # INPUT: 
-# #     - desiredPath (str): path to the folder to create
-# # --------------------------------------------------------------------------------
-# def createFolder(desiredPath): 
-#     if not os.path.exists(desiredPath):
-#         os.makedirs(desiredPath)
-
-
-# def rgb_to_lab(rgb_tensor):
-#     """Convert RGB tensor to LAB color space"""
-#     # Convert tensor to numpy
-#     rgb_np = rgb_tensor.permute(0, 2, 3, 1).numpy()
-#     lab_images = []
-    
-#     for img in rgb_np:
-#         # Convert to LAB
-#         lab = cv2.cvtColor(img, cv2.COLOR_RGB2LAB)
-#         lab_images.append(lab)
-    
-#     lab_tensor = torch.tensor(np.array(lab_images), dtype=torch.float32).permute(0, 3, 1, 2)
-#     return lab_tensor
-
-
-# def lab_to_rgb(lab_tensor):
-#     """Convert LAB tensor to RGB color space"""
-#     lab_np = lab_tensor.permute(0, 2, 3, 1).numpy()
-#     rgb_images = []
-    
-#     for img in lab_np:
-#         rgb = cv2.cvtColor(img.astype(np.uint8), cv2.COLOR_LAB2RGB)
-#         rgb_images.append(rgb)
-    
-#     rgb_tensor = torch.tensor(np.array(rgb_images), dtype=torch.float32).permute(0, 3, 1, 2)
-#     return rgb_tensor
-
-
-# class ColorizationLoss(nn.Module):
-#     """Loss function for colorization task"""
-#     def __init__(self):
-#         super(ColorizationLoss, self).__init__()
-#         self.mse_loss = nn.MSELoss()
-#         self.l1_loss = nn.L1Loss()
-        
-#     def forward(self, pred, target):
-#         # MSE loss for color accuracy
-#         mse = self.mse_loss(pred, target)
-#         # L1 loss for sharper colors
-#         l1 = self.l1_loss(pred, target)
-#         # Combined loss
-#         return 0.7 * mse + 0.3 * l1
-
-
-# ######################################################################################
-# #
-# # CLASS DESCRIBING THE INSTANTIATION, TRAINING AND EVALUATION OF THE MODEL 
-# # An instance of Network_Class has been created in the main.py file
-# # 
-# ######################################################################################
-
-# class Network_Class: 
-#     # --------------------------------------------------------------------------------
-#     # INITIALISATION OF THE MODEL
-#     # INPUTS: 
-#     #     - param (dic): dictionnary containing the parameters defined in the 
-#     #                    configuration (yaml) file
-#     #     - imgDirectory (str): path to the folder containing the images 
-#     #     - maskDirectory (str): path to the folder containing the masks
-#     #     - resultsPath (str): path to the folder containing the results of the 
-#     #                          experiement
-#     # --------------------------------------------------------------------------------
-#     def __init__(self, param, imgDirectory, maskDirectory, resultsPath):
-#         print("resultsPath", resultsPath)
-#         # ----------------
-#         # USEFUL VARIABLES 
-#         # ----------------
-#         self.imgDirectory  = imgDirectory
-#         self.maskDirectory = maskDirectory
-#         self.resultsPath   = resultsPath
-#         self.epoch         = param["TRAINING"]["EPOCH"]
-#         self.device        = param["TRAINING"]["DEVICE"]
-#         self.lr            = param["TRAINING"]["LEARNING_RATE"]
-#         self.batchSize     = param["TRAINING"]["BATCH_SIZE"]
-#         self.task          = param["MODEL"].get("TASK", "segmentation")
-
-#         # -----------------------------------
-#         # NETWORK ARCHITECTURE INITIALISATION
-#         # -----------------------------------
-#         self.model = DeepLabV3Plus(param).to(self.device)
-
-#         # -------------------
-#         # TRAINING PARAMETERS
-#         # -------------------
-#         if self.task == "colorization":
-#             self.criterion = ColorizationLoss()
-#         else:
-#             self.criterion = nn.CrossEntropyLoss()
-            
-#         self.optimizer = torch.optim.Adam(self.model.parameters(), lr=self.lr)
-
-#         # ----------------------------------------------------
-#         # DATASET INITIALISATION (from the dataLoader.py file)
-#         # ----------------------------------------------------
-#         self.dataSetTrain    = LLNDataset(imgDirectory, maskDirectory, "train", param)
-#         self.dataSetVal      = LLNDataset(imgDirectory, maskDirectory, "val",   param)
-#         self.dataSetTest     = LLNDataset(imgDirectory, maskDirectory, "test",  param)
-#         self.trainDataLoader = DataLoader(self.dataSetTrain, batch_size=self.batchSize, shuffle=True,  num_workers=4)
-#         self.valDataLoader   = DataLoader(self.dataSetVal,   batch_size=self.batchSize, shuffle=False, num_workers=4)
-#         self.testDataLoader  = DataLoader(self.dataSetTest,  batch_size=self.batchSize, shuffle=False, num_workers=4)
-
-#         # Pour suivre les métriques
-#         self.train_losses = []
-#         self.val_losses = []
-
-#     # ---------------------------------------------------------------------------
-#     # LOAD PRETRAINED WEIGHTS (to run evaluation without retraining the model...)
-#     # ---------------------------------------------------------------------------
-#     def loadWeights(self): 
-#         self.model.load_state_dict(torch.load(self.resultsPath + '/_Weights/wghts.pkl', weights_only=True))
-
-#     # -----------------------------------
-#     # TRAINING LOOP (implémentation réelle)
-#     # -----------------------------------
-#     def train(self): 
-#         best_loss = float('inf')
-        
-#         # train for a given number of epochs
-#         for epoch in range(self.epoch):
-#             # Training phase
-#             self.model.train()
-#             running_loss = 0.0
-            
-#             for batch_idx, (images, masks, _, _) in enumerate(self.trainDataLoader):
-#                 if self.task == "colorization":
-#                     # Pour la colorisation: utiliser l'image comme target
-#                     images = images.to(self.device)
-#                     targets = images  # Target est l'image couleur originale
-                    
-#                     # Forward pass
-#                     self.optimizer.zero_grad()
-#                     outputs = self.model(images)
-#                     loss = self.criterion(outputs, targets)
-#                 else:
-#                     # Pour la segmentation
-#                     images = images.to(self.device)
-#                     masks = masks.to(self.device).long()
-                    
-#                     # Forward pass
-#                     self.optimizer.zero_grad()
-#                     outputs = self.model(images)
-#                     loss = self.criterion(outputs, masks)
-                
-#                 # Backward pass
-#                 loss.backward()
-#                 self.optimizer.step()
-                
-#                 running_loss += loss.item()
-            
-#             avg_train_loss = running_loss / len(self.trainDataLoader)
-#             self.train_losses.append(avg_train_loss)
-            
-#             # Validation phase
-#             val_loss = self.validate()
-#             self.val_losses.append(val_loss)
-            
-#             print(f"Epoch [{epoch+1}/{self.epoch}] - Train Loss: {avg_train_loss:.4f} - Val Loss: {val_loss:.4f}")
-            
-#             if val_loss < best_loss:
-#                 best_loss = val_loss
-#                 modelWts = copy.deepcopy(self.model.state_dict())
-        
-#         # Print learning curves
-#         self.plot_learning_curves()
-        
-#         # Save the model weights
-#         wghtsPath  = self.resultsPath + '/_Weights/'
-#         createFolder(wghtsPath)
-#         torch.save(modelWts, wghtsPath + '/wghts.pkl')
-#         print("Training completed and weights saved!")
-
-
 from Dataset.dataLoader import *
 from Dataset.makeGraph import *
 from Networks.Architectures.deepLab import *
-from sklearn.metrics import confusion_matrix
-import matplotlib.pyplot as plt
+from sklearn.metrics import silhouette_score, calinski_harabasz_score, davies_bouldin_score
 import seaborn as sns
         
 import numpy as np
 np.random.seed(2885)
 import os
 import copy
-from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score, jaccard_score
-from sklearn.metrics import roc_auc_score, roc_curve, auc
-from sklearn.preprocessing import label_binarize
 import matplotlib.pyplot as plt
 import seaborn as sns
         
 import torch
 torch.manual_seed(2885)
 from torch.utils.data import DataLoader
-from torch.utils.data import random_split
 import torch.nn as nn
 import torch.optim
 
-import cv2
-
-# Import pour le clustering
 from sklearn.cluster import KMeans, DBSCAN
 from sklearn.mixture import GaussianMixture
 from sklearn.decomposition import PCA
 from sklearn.manifold import TSNE
-from sklearn.metrics import silhouette_score, calinski_harabasz_score, davies_bouldin_score
+from sklearn.preprocessing import StandardScaler
+import cv2
+from sklearn.preprocessing import StandardScaler
 
 
 # --------------------------------------------------------------------------------
@@ -280,12 +38,10 @@ def createFolder(desiredPath):
 
 def rgb_to_lab(rgb_tensor):
     """Convert RGB tensor to LAB color space"""
-    # Convert tensor to numpy
     rgb_np = rgb_tensor.permute(0, 2, 3, 1).numpy()
     lab_images = []
     
     for img in rgb_np:
-        # Convert to LAB
         lab = cv2.cvtColor(img, cv2.COLOR_RGB2LAB)
         lab_images.append(lab)
     
@@ -325,49 +81,73 @@ class ClusteringModule:
         self.n_clusters = param.get("CLUSTERING", {}).get("N_CLUSTERS", 8)
         self.method = param.get("CLUSTERING", {}).get("METHOD", "kmeans")
         self.random_state = param.get("CLUSTERING", {}).get("RANDOM_STATE", 2885)
+        
+        self.eps = param.get("CLUSTERING", {}).get("EPS", 0.5)
+        self.min_samples = param.get("CLUSTERING", {}).get("MIN_SAMPLES", 5)
+        
         self.cluster_model = None
         self.pca = None
+        self.scaler = StandardScaler()
         
     def fit(self, features):
         """Entraîner le modèle de clustering sur les features"""
         print(f"\n🎯 Fitting {self.method} clustering on {len(features)} feature vectors...")
         
-        # Réduire la dimensionnalité avec PCA si nécessaire
-        if features.shape[1] > 50:
-            print(f"Reducing dimensionality from {features.shape[1]} to 50 with PCA...")
-            self.pca = PCA(n_components=50, random_state=self.random_state)
-            features_reduced = self.pca.fit_transform(features)
-        else:
-            features_reduced = features
+        features_scaled = self.scaler.fit_transform(features)
         
-        # Appliquer l'algorithme de clustering
+        if features_scaled.shape[1] > 50:
+            print(f"Reducing dimensionality from {features_scaled.shape[1]} to 50 with PCA...")
+            self.pca = PCA(n_components=50, random_state=self.random_state)
+            features_reduced = self.pca.fit_transform(features_scaled)
+        else:
+            features_reduced = features_scaled
+        
         if self.method == "kmeans":
             self.cluster_model = KMeans(
                 n_clusters=self.n_clusters,
                 random_state=self.random_state,
                 n_init=10
             )
+        elif self.method == "dbscan":
+            print(f"Using DBSCAN with eps={self.eps}, min_samples={self.min_samples}")
+            self.cluster_model = DBSCAN(
+                eps=self.eps,
+                min_samples=self.min_samples,
+                metric='euclidean',
+                n_jobs=-1
+            )
+        elif self.method == "gmm":
+            self.cluster_model = GaussianMixture(
+                n_components=self.n_clusters,
+                random_state=self.random_state,
+                covariance_type='diag'
+            )
+        else:
+            raise ValueError(f"Unsupported clustering method: {self.method}")
         
-        self.cluster_model.fit(features_reduced)
-        
-        # Calculer les métriques de qualité du clustering
-        if self.method != "dbscan":
+        if self.method == "gmm":
+            self.cluster_model.fit(features_reduced)
+            labels = self.cluster_model.predict(features_reduced)
+        else:
+            self.cluster_model.fit(features_reduced)
             labels = self.cluster_model.labels_
-            n_clusters_found = len(np.unique(labels[labels != -1])) if self.method == "dbscan" else self.n_clusters
-            
-            if n_clusters_found > 1:
-                try:
-                    silhouette = silhouette_score(features_reduced, labels)
-                    calinski = calinski_harabasz_score(features_reduced, labels)
-                    davies = davies_bouldin_score(features_reduced, labels)
-                    
-                    print(f"Clustering quality metrics:")
-                    print(f"  - Number of clusters found: {n_clusters_found}")
-                    print(f"  - Silhouette score: {silhouette:.4f}")
-                    print(f"  - Calinski-Harabasz score: {calinski:.4f}")
-                    print(f"  - Davies-Bouldin score: {davies:.4f}")
-                except:
-                    print("Could not compute clustering quality metrics")
+        
+        n_clusters_found = len(np.unique(labels[labels != -1]))
+        
+        if n_clusters_found > 1:
+            try:
+                silhouette = silhouette_score(features_reduced[labels != -1], labels[labels != -1])
+                calinski = calinski_harabasz_score(features_reduced[labels != -1], labels[labels != -1])
+                davies = davies_bouldin_score(features_reduced[labels != -1], labels[labels != -1])
+                
+                print(f"Clustering quality metrics:")
+                print(f"  - Number of clusters found: {n_clusters_found}")
+                print(f"  - Noise points: {np.sum(labels == -1)}")
+                print(f"  - Silhouette score: {silhouette:.4f}")
+                print(f"  - Calinski-Harabasz score: {calinski:.4f}")
+                print(f"  - Davies-Bouldin score: {davies:.4f}")
+            except Exception as e:
+                print(f"Could not compute all clustering quality metrics: {e}")
         
         return self
     
@@ -376,15 +156,17 @@ class ClusteringModule:
         if self.cluster_model is None:
             raise ValueError("Clustering model not fitted yet!")
         
-        # Appliquer PCA si nécessaire
+        features = self.scaler.transform(features)
+        
         if self.pca is not None:
             features = self.pca.transform(features)
         
-        # Prédire les clusters
         if self.method == "gmm":
             labels = self.cluster_model.predict(features)
+        elif self.method == "dbscan":
+            labels = self.cluster_model.fit_predict(features)
         else:
-            labels = self.cluster_model.fit_predict(features) if self.cluster_model == "dbscan" else self.cluster_model.predict(features)
+            labels = self.cluster_model.predict(features)
         
         return labels
     
@@ -392,25 +174,222 @@ class ClusteringModule:
         """Visualiser les clusters en 2D avec t-SNE"""
         print("Visualizing clusters with t-SNE...")
         
-        # Réduire à 2D avec t-SNE
-        tsne = TSNE(n_components=2, random_state=self.random_state, perplexity=30)
-        features_2d = tsne.fit_transform(features[:5000]) 
+        max_points = 5000
+        if len(features) > max_points:
+            indices = np.random.choice(len(features), max_points, replace=False)
+            features_sampled = features[indices]
+            labels_sampled = labels[indices]
+        else:
+            features_sampled = features
+            labels_sampled = labels
         
-        # Créer la visualisation
-        plt.figure(figsize=(12, 10))
-        scatter = plt.scatter(features_2d[:, 0], features_2d[:, 1], 
-                             c=labels[:5000], cmap='tab20', s=5, alpha=0.6)
-        plt.colorbar(scatter, label='Cluster')
-        plt.title(f't-SNE Visualization of Feature Clusters ({self.method})', fontsize=16)
-        plt.xlabel('t-SNE Dimension 1')
-        plt.ylabel('t-SNE Dimension 2')
-        plt.grid(True, alpha=0.3)
+        try:
+            tsne = TSNE(n_components=2, random_state=self.random_state, perplexity=30, n_jobs=-1)
+            features_2d = tsne.fit_transform(features_sampled)
+            
+            plt.figure(figsize=(12, 10))
+            
+            if self.method == "dbscan" and -1 in labels_sampled:
+                noise_mask = labels_sampled == -1
+                cluster_mask = ~noise_mask
+                
+                if np.any(cluster_mask):
+                    scatter_clusters = plt.scatter(features_2d[cluster_mask, 0], 
+                                                  features_2d[cluster_mask, 1], 
+                                                  c=labels_sampled[cluster_mask], 
+                                                  cmap='tab20', s=10, alpha=0.6)
+                    plt.colorbar(scatter_clusters, label='Cluster ID')
+                
+                if np.any(noise_mask):
+                    plt.scatter(features_2d[noise_mask, 0], 
+                               features_2d[noise_mask, 1], 
+                               c='gray', s=5, alpha=0.3, label='Noise')
+                    
+                    plt.legend()
+            else:
+                scatter = plt.scatter(features_2d[:, 0], features_2d[:, 1], 
+                                     c=labels_sampled, cmap='tab20', s=10, alpha=0.6)
+                plt.colorbar(scatter, label='Cluster ID')
+            
+            plt.title(f't-SNE Visualization of Feature Clusters ({self.method})', fontsize=16)
+            plt.xlabel('t-SNE Dimension 1')
+            plt.ylabel('t-SNE Dimension 2')
+            plt.grid(True, alpha=0.3)
+            
+            n_clusters = len(np.unique(labels_sampled[labels_sampled != -1]))
+            n_noise = np.sum(labels_sampled == -1) if self.method == "dbscan" else 0
+            
+            stats_text = f'Clusters: {n_clusters}'
+            if n_noise > 0:
+                stats_text += f'\nNoise: {n_noise}'
+            
+            plt.text(0.02, 0.98, stats_text, transform=plt.gca().transAxes,
+                    verticalalignment='top', bbox=dict(boxstyle='round', facecolor='white', alpha=0.8))
+            
+            os.makedirs(save_path, exist_ok=True)
+            plt.savefig(os.path.join(save_path, "clusters_tsne.png"), dpi=300, bbox_inches='tight')
+            plt.close()
+            
+            print(f"Cluster visualization saved to {os.path.join(save_path, 'clusters_tsne.png')}")
+            
+        except Exception as e:
+            print(f"Error in t-SNE visualization: {e}")
+            
+            try:
+                print("Falling back to PCA visualization...")
+                pca_2d = PCA(n_components=2, random_state=self.random_state)
+                features_2d = pca_2d.fit_transform(features_sampled)
+                
+                plt.figure(figsize=(12, 10))
+                scatter = plt.scatter(features_2d[:, 0], features_2d[:, 1], 
+                                     c=labels_sampled, cmap='tab20', s=10, alpha=0.6)
+                plt.colorbar(scatter, label='Cluster ID')
+                plt.title(f'PCA Visualization of Feature Clusters ({self.method})', fontsize=16)
+                plt.xlabel('PCA Component 1')
+                plt.ylabel('PCA Component 2')
+                plt.grid(True, alpha=0.3)
+                
+                plt.savefig(os.path.join(save_path, "clusters_pca.png"), dpi=300, bbox_inches='tight')
+                plt.close()
+                
+                print(f"PCA visualization saved to {os.path.join(save_path, 'clusters_pca.png')}")
+                
+            except Exception as e2:
+                print(f"Error in PCA visualization: {e2}")
+
+class ContextPredictor:
+    """Module pour la prédiction en contexte (basée sur les voisins)"""
+    def __init__(self, param):
+        self.context_size = param.get("CONTEXT", {}).get("CONTEXT_SIZE", 3)
+        self.use_spatial_context = param.get("CONTEXT", {}).get("USE_SPATIAL_CONTEXT", True)
+        self.use_feature_context = param.get("CONTEXT", {}).get("USE_FEATURE_CONTEXT", True)
+        self.k_neighbors = param.get("CONTEXT", {}).get("K_NEIGHBORS", 5)
         
-        # Sauvegarder
-        plt.savefig(os.path.join(save_path, "clusters_tsne.png"), dpi=300, bbox_inches='tight')
-        plt.close()
+    def enhance_clustering_with_context(self, initial_labels, features, positions=None):
+        """
+        Améliorer les résultats de clustering en utilisant le contexte
         
-        print(f"Cluster visualization saved to {os.path.join(save_path, 'clusters_tsne.png')}")
+        Args:
+            initial_labels: Labels initiaux [N]
+            features: Features [N, C]
+            positions: Positions spatiales [N, 2] (optionnel)
+            
+        Returns:
+            enhanced_labels: Labels améliorés [N]
+        """
+        print(f"\n🔍 Enhancing clustering with context...")
+        
+        if features is None or len(features) == 0:
+            print("⚠️ No features provided, returning original labels")
+            return initial_labels
+        
+        enhanced_labels = initial_labels.copy()
+        
+        unique_labels = np.unique(initial_labels)
+        noise_mask = initial_labels == -1
+        
+        if np.any(noise_mask):
+            print(f"  Found {np.sum(noise_mask)} noise points to reassign...")
+            
+            noise_features = features[noise_mask]
+            valid_features = features[~noise_mask]
+            valid_labels = initial_labels[~noise_mask]
+            
+            if len(valid_features) > 0 and len(noise_features) > 0:
+                from sklearn.neighbors import KNeighborsClassifier
+                
+                knn = KNeighborsClassifier(n_neighbors=min(5, len(valid_features)))
+                knn.fit(valid_features, valid_labels)
+                
+                predicted_labels = knn.predict(noise_features)
+                
+                enhanced_labels[noise_mask] = predicted_labels
+                
+                print(f"  Reassigned {len(predicted_labels)} noise points")
+        
+        if positions is not None and len(positions) > 0:
+            print(f"  Applying spatial smoothing...")
+            
+            enhanced_labels = self._apply_spatial_smoothing(enhanced_labels, features, positions)
+        
+        return enhanced_labels
+    
+    def _apply_spatial_smoothing(self, labels, features, positions, window_size=3):
+        """
+        Appliquer un lissage spatial basé sur les voisins
+        """
+        from scipy.spatial import cKDTree
+        
+        tree = cKDTree(positions[:, :2]) 
+        
+        distances, indices = tree.query(positions[:, :2], k=min(self.k_neighbors, len(positions)))
+        
+        smoothed_labels = labels.copy()
+        
+        for i in range(len(labels)):
+            if labels[i] == -1: 
+                continue
+                
+            neighbor_indices = indices[i]
+            neighbor_labels = labels[neighbor_indices]
+            
+            valid_neighbor_labels = neighbor_labels[neighbor_labels != -1]
+            
+            if len(valid_neighbor_labels) > 0:
+                unique, counts = np.unique(valid_neighbor_labels, return_counts=True)
+                most_common = unique[np.argmax(counts)]
+                smoothed_labels[i] = most_common
+        
+        return smoothed_labels
+    def predict_with_context(self, features, positions=None):
+        """
+        Prédire les clusters en utilisant le contexte spatial et/ou feature
+        
+        Args:
+            features: Features à prédire [N, C]
+            positions: Positions spatiales [N, 2] (optionnel)
+            
+        Returns:
+            labels: Labels prédits avec contexte [N]
+        """
+        from sklearn.neighbors import NearestNeighbors
+        
+        N = len(features)
+        
+        if not (self.use_spatial_context or self.use_feature_context):
+            print("⚠️ Context prediction disabled, returning direct predictions")
+            return np.zeros(N)
+        
+        context_features = []
+        
+        if self.use_feature_context:
+            context_features.append(features)
+        
+        if self.use_spatial_context and positions is not None:
+            positions_norm = (positions - positions.min(axis=0)) / (positions.max(axis=0) - positions.min(axis=0) + 1e-8)
+            context_features.append(positions_norm)
+        
+        if context_features:
+            context_matrix = np.concatenate(context_features, axis=1)
+        else:
+            context_matrix = features
+        
+        knn = NearestNeighbors(n_neighbors=self.k_neighbors, metric='euclidean')
+        knn.fit(context_matrix)
+        distances, indices = knn.kneighbors(context_matrix)
+        
+        predicted_labels = np.zeros(N)
+        
+        for i in range(N):
+            neighbor_indices = indices[i]
+            # Ici, vous devriez avoir les labels initiaux des voisins
+            # Pour l'instant, nous utilisons un vote majoritaire fictif
+            # En pratique, vous auriez besoin des labels initiaux
+            predicted_labels[i] = 0  # Remplacer par la logique réelle
+        
+        return predicted_labels
+    
+    
 
 
 ######################################################################################
@@ -423,13 +402,6 @@ class ClusteringModule:
 class Network_Class: 
     # --------------------------------------------------------------------------------
     # INITIALISATION OF THE MODEL
-    # INPUTS: 
-    #     - param (dic): dictionnary containing the parameters defined in the 
-    #                    configuration (yaml) file
-    #     - imgDirectory (str): path to the folder containing the images 
-    #     - maskDirectory (str): path to the folder containing the masks
-    #     - resultsPath (str): path to the folder containing the results of the 
-    #                          experiement
     # --------------------------------------------------------------------------------
     def __init__(self, param, imgDirectory, maskDirectory, resultsPath):
         print("resultsPath", resultsPath)
@@ -445,8 +417,17 @@ class Network_Class:
         self.batchSize     = param["TRAINING"]["BATCH_SIZE"]
         self.task          = param["MODEL"].get("TASK", "segmentation")
         
+        # Activer le clustering contextuel si spécifié
+        self.use_contextual_clustering = param.get("CLUSTERING", {}).get("USE_CONTEXTUAL", False)
+        
         # Initialiser le module de clustering
         self.clustering_module = ClusteringModule(param)
+        
+        # Initialiser le prédicteur de contexte si activé
+        if self.use_contextual_clustering:
+            self.context_predictor = ContextPredictor(param)
+        else:
+            self.context_predictor = None
 
         # -----------------------------------
         # NETWORK ARCHITECTURE INITIALISATION
@@ -480,6 +461,8 @@ class Network_Class:
         # Pour stocker les features extraites
         self.train_features = []
         self.train_feature_maps = []
+        self.train_positions = []  # Pour le contexte spatial
+
 
     # ---------------------------------------------------------------------------
     # LOAD PRETRAINED WEIGHTS (to run evaluation without retraining the model...)
@@ -557,10 +540,11 @@ class Network_Class:
         self.model.eval()
         
         all_features = []
-        all_feature_maps = []  # Stocker les cartes de features complètes
+        all_feature_maps = []
         all_images = []
         all_masks = []
         all_tile_names = []
+        all_positions = []  # Stocker les positions pour le contexte
         
         print("Extracting features from training set...")
         with torch.no_grad():
@@ -568,12 +552,33 @@ class Network_Class:
                 images = images.to(self.device)
                 
                 # Extraire les features de l'encodeur
-                features = self.model.get_encoder_features(images)
+                try:
+                    # Essayer d'appeler la méthode get_encoder_features
+                    features = self.model.get_encoder_features(images)
+                except AttributeError:
+                    # Fallback: extraire les features manuellement
+                    if self.task == "colorization" and images.shape[1] == 3:
+                        images_gray = 0.2989 * images[:, 0:1, :, :] + 0.5870 * images[:, 1:2, :, :] + 0.1140 * images[:, 2:3, :, :]
+                        images_for_features = images_gray
+                    else:
+                        images_for_features = images
+                    
+                    # Passer à travers les couches de l'encodeur
+                    e1 = self.model.encoder1(images_for_features)
+                    e2 = self.model.encoder2(e1)
+                    e3 = self.model.encoder3(e2)
+                    features = e3
                 
                 # Déplacer vers le CPU
                 features = features.to('cpu')
                 images = images.to('cpu')
                 masks = masks.to('cpu')
+                
+                # Obtenir les positions spatiales si le clustering contextuel est activé
+                if self.use_contextual_clustering:
+                    B, C, H_prime, W_prime = features.shape
+                    positions = self._create_spatial_positions(B, H_prime, W_prime)
+                    all_positions.append(positions)
                 
                 # Reshape: [B, C, H', W'] -> [B*H'*W', C]
                 B, C, H_prime, W_prime = features.shape
@@ -594,8 +599,15 @@ class Network_Class:
         all_images = np.concatenate(all_images, axis=0)
         all_masks = np.concatenate(all_masks, axis=0)
         
+        if self.use_contextual_clustering and all_positions:
+            all_positions = np.concatenate(all_positions, axis=0)
+        else:
+            all_positions = None
+        
         print(f"Total feature vectors: {all_features.shape}")
         print(f"Feature dimension: {all_features.shape[1]}")
+        if all_positions is not None:
+            print(f"Positions shape: {all_positions.shape}")
         
         # Sauvegarder pour utilisation ultérieure
         self.train_features = all_features
@@ -603,11 +615,33 @@ class Network_Class:
         self.train_images = all_images
         self.train_masks = all_masks
         self.train_tile_names = all_tile_names
+        self.train_positions = all_positions
         
         # Appliquer le clustering
-        self.perform_clustering(all_features, all_feature_maps, all_images, all_masks, all_tile_names)
+        cluster_labels = self.perform_clustering(all_features, all_feature_maps, all_images, 
+                                               all_masks, all_tile_names, all_positions)
+        return cluster_labels
+
+    def _create_spatial_positions(self, batch_size, height, width):
+        """Créer des grilles de positions spatiales"""
+        positions = []
+        for b in range(batch_size):
+            # Créer une grille de positions
+            y_coords, x_coords = np.mgrid[0:height, 0:width]
+            
+            # Normaliser les coordonnées
+            y_norm = y_coords.flatten() / max(height - 1, 1)
+            x_norm = x_coords.flatten() / max(width - 1, 1)
+            
+            # Ajouter l'ID du batch comme troisième dimension
+            batch_id = np.full(height * width, b / max(batch_size, 1))
+            
+            positions_batch = np.column_stack([x_norm, y_norm, batch_id])
+            positions.append(positions_batch)
+        
+        return np.concatenate(positions, axis=0)
     
-    def perform_clustering(self, features, feature_maps, images, masks, tile_names):
+    def perform_clustering(self, features, feature_maps, images, masks, tile_names, positions=None):
         """Effectuer le clustering et analyser les résultats"""
         print("\n🎯 Performing clustering on extracted features...")
         
@@ -621,8 +655,13 @@ class Network_Class:
             print(f"Subsampling to {max_samples} feature vectors for clustering...")
             indices = np.random.choice(len(features), max_samples, replace=False)
             features_sampled = features[indices]
+            if positions is not None:
+                positions_sampled = positions[indices]
+            else:
+                positions_sampled = None
         else:
             features_sampled = features
+            positions_sampled = positions
             indices = np.arange(len(features))
         
         # Entraîner le modèle de clustering
@@ -632,21 +671,33 @@ class Network_Class:
         print("Predicting clusters for all features...")
         all_cluster_labels = self.clustering_module.predict(features)
         
+        # Appliquer la prédiction contextuelle si activée
+        if self.use_contextual_clustering and self.context_predictor is not None:
+            print("Applying contextual clustering refinement...")
+            all_cluster_labels = self.context_predictor.enhance_clustering_with_context(
+                all_cluster_labels, features, positions
+            )
+        
         # Visualiser les clusters en 2D
-        self.clustering_module.visualize_clusters_2d(features_sampled, 
+        try:
+            self.clustering_module.visualize_clusters_2d(features_sampled, 
                                                     all_cluster_labels[indices], 
                                                     cluster_path)
+        except AttributeError:
+            print("Warning: visualize_clusters_2d method not available, skipping visualization")
         
         # Analyser la correspondance avec les classes réelles
         self.analyze_cluster_class_correspondence(all_cluster_labels, masks, cluster_path)
         
         # Visualiser des exemples de clustering
         self.visualize_clustering_results(feature_maps, images, masks, 
-                                         all_cluster_labels, tile_names, cluster_path)
+                                        all_cluster_labels, tile_names, positions, cluster_path)
         
         # Tester le clustering sur les données de test
         self.test_clustering_on_test_set(cluster_path)
-    
+        
+        return all_cluster_labels
+
     def analyze_cluster_class_correspondence(self, cluster_labels, true_masks, save_path):
         """Analyser la correspondance entre les clusters et les classes réelles"""
         print("\n📊 Analyzing cluster-class correspondence...")
@@ -722,7 +773,7 @@ class Network_Class:
                 f.write(f"Cluster {i}: " + " ".join([f"{val:.3f}" for val in confusion_matrix_norm[i]]) + "\n")
     
     def visualize_clustering_results(self, feature_maps, images, masks, 
-                                   cluster_labels, tile_names, save_path):
+                                   cluster_labels, tile_names, positions, save_path):
         """Visualiser les résultats du clustering sur quelques exemples"""
         print("\n🖼️ Visualizing clustering results...")
         
@@ -741,11 +792,13 @@ class Network_Class:
             feature_map = feature_maps[idx]
             
             # Obtenir les labels de cluster pour cette image
-            # Calculer les indices correspondant à cette image dans les labels aplatis
             H_prime, W_prime = feature_map.shape[1], feature_map.shape[2]
             start_idx = idx * H_prime * W_prime
             end_idx = (idx + 1) * H_prime * W_prime
             img_cluster_labels = cluster_labels[start_idx:end_idx].reshape(H_prime, W_prime)
+            
+            # Obtenir les positions pour cette image
+            img_positions = positions[start_idx:end_idx].reshape(H_prime, W_prime, -1)
             
             # Upsample les labels de cluster à la résolution originale
             cluster_mask_upsampled = cv2.resize(img_cluster_labels.astype(np.float32), 
@@ -753,7 +806,7 @@ class Network_Class:
                                                interpolation=cv2.INTER_NEAREST)
             
             # Créer la visualisation
-            fig, axes = plt.subplots(2, 3, figsize=(15, 10))
+            fig, axes = plt.subplots(2, 4, figsize=(20, 10))
             
             # Image originale
             img_rgb = img.transpose(1, 2, 0)
@@ -772,23 +825,37 @@ class Network_Class:
             axes[0, 2].set_title('True Segmentation')
             axes[0, 2].axis('off')
             
+            # Carte de positions spatiales
+            axes[0, 3].imshow(img_positions[:, :, 0], cmap='viridis')
+            axes[0, 3].set_title('Spatial Position (X)')
+            axes[0, 3].axis('off')
+            
             # Carte de clusters (résolution des features)
-            axes[1, 0].imshow(img_cluster_labels, cmap='tab20')
+            im = axes[1, 0].imshow(img_cluster_labels, cmap='tab20')
             axes[1, 0].set_title(f'Cluster Map ({H_prime}x{W_prime})')
             axes[1, 0].axis('off')
             
-            # Carte de clusters upsamplée
-            axes[1, 1].imshow(cluster_mask_upsampled, cmap='tab20')
-            axes[1, 1].set_title(f'Upsampled Cluster Map')
-            axes[1, 1].axis('off')
+            # Histogramme des clusters
+            unique_labels = np.unique(img_cluster_labels)
+            cluster_counts = [np.sum(img_cluster_labels == label) for label in unique_labels]
+            axes[1, 1].bar(range(len(unique_labels)), cluster_counts)
+            axes[1, 1].set_title('Cluster Distribution')
+            axes[1, 1].set_xlabel('Cluster ID')
+            axes[1, 1].set_ylabel('Count')
             
-            # Superposition clusters sur image
-            axes[1, 2].imshow(img_rgb)
-            axes[1, 2].imshow(cluster_mask_upsampled, cmap='tab20', alpha=0.5)
-            axes[1, 2].set_title('Clusters Overlay')
+            # Carte de clusters upsamplée
+            axes[1, 2].imshow(cluster_mask_upsampled, cmap='tab20')
+            axes[1, 2].set_title(f'Upsampled Cluster Map')
             axes[1, 2].axis('off')
             
-            plt.suptitle(f'Tile: {tile_names[idx]}', fontsize=14)
+            # Superposition clusters sur image
+            axes[1, 3].imshow(img_rgb)
+            axes[1, 3].imshow(cluster_mask_upsampled, cmap='tab20', alpha=0.5)
+            axes[1, 3].set_title('Clusters Overlay')
+            axes[1, 3].axis('off')
+            
+            plt.suptitle(f'Tile: {tile_names[idx]} | Clustering: {self.clustering_module.method}', 
+                        fontsize=14)
             plt.tight_layout()
             
             # Sauvegarder
@@ -796,6 +863,7 @@ class Network_Class:
             plt.savefig(save_file, dpi=150, bbox_inches='tight')
             plt.close()
         
+        print(f"Saved {n_examples} clustering visualizations to {vis_path}")
         print(f"Saved {n_examples} clustering visualizations to {vis_path}")
     
     def test_clustering_on_test_set(self, save_path):
@@ -909,7 +977,37 @@ class Network_Class:
                 if len(cluster_classes) > 0:
                     dominant_class = np.bincount(cluster_classes.astype(int)).argmax()
                     f.write(f"{cluster:<10} {purity:.4f}     {size:<10} {dominant_class:<15}\n")
+    def generate_context_aware_predictions(self, features, positions, initial_labels):
+        """
+        Générer des prédictions en utilisant le contexte spatial et feature
+        
+        Args:
+            features: Features [N, C]
+            positions: Positions spatiales [N, 2]
+            initial_labels: Labels initiaux [N]
+            
+        Returns:
+            context_labels: Labels avec contexte [N]
+        """
+        print("\n🌐 Generating context-aware predictions...")
+        
+        # Utiliser le prédicteur de contexte
+        context_labels = self.context_predictor.predict_with_context(
+            features, positions
+        )
+        
+        # Combiner avec les labels initiaux
+        combined_labels = self._combine_predictions(initial_labels, context_labels)
+        
+        return combined_labels
     
+    def _combine_predictions(self, base_labels, context_labels):
+        """Combiner les prédictions de base avec les prédictions contextuelles"""
+        
+        # Pour l'instant, retourner les labels de base
+        # Vous pouvez implémenter une logique de combinaison plus sophistiquée
+        return base_labels
+
     def generate_pseudo_segmentation_maps(self, cluster_labels, images, masks, 
                                         tile_names, save_path):
         """Générer et visualiser des pseudo-masques de segmentation"""
