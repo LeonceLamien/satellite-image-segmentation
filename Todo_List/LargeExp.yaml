@@ -1,0 +1,61 @@
+---
+DATASET:
+  # size of the images 
+  RESIZE_SHAPE: 64x64
+
+MODEL:
+  # Architecture parameters - LARGE MODEL CONFIGURATION
+  # This configuration significantly increases model capacity
+  # to test for overfitting and maximum performance
+  
+  # Base channels - 4x larger than default
+  NB_CHANNEL: 256
+  
+  # BACKBONE_CHANNELS: Very deep encoder
+  # 256 -> 512 -> 1024 channels in encoder levels
+  BACKBONE_CHANNELS: 256
+  
+  # ASPP configuration - Larger feature space
+  # Increased to capture more complex patterns
+  ASPP_OUTPUT_CHANNELS: 512
+  ASPP_DROPOUT: 0.3  # Reduced dropout for large model
+  
+  # Regularization - Lower dropout to test capacity
+  DROPOUT: 0.1
+  USE_ATTENTION: FALSE
+  
+  # Loss function parameters
+  LOSS_TYPE: CrossEntropyLoss
+  
+  # No class weights initially to see raw performance
+  CLASS_WEIGHTS: null
+  
+TRAINING: 
+  # Optimizer parameters
+  # Lower learning rate for larger model (more stable training)
+  LEARNING_RATE: 0.0005
+  WEIGHT_DECAY: 0.0  # No regularization initially
+  OPTIMIZER: Adam  # Adam often works better for large models
+  MOMENTUM: 0.9
+  
+  # Learning rate scheduler
+  LR_SCHEDULER: ReduceLROnPlateau
+  LR_STEP_SIZE: 10
+  LR_GAMMA: 0.5  # More aggressive LR reduction
+  
+  # Training parameters
+  EPOCH: 30  # More epochs to see if model overfits
+  BATCH_SIZE: 8  # Reduced batch size due to larger model
+  
+  # Hardware
+  DEVICE: cpu  # Change to 'cuda' if GPU available for faster training
+  
+  # Early stopping - Monitor for overfitting
+  EARLY_STOPPING: TRUE
+  PATIENCE: 10
+
+# Expected behavior:
+# - This large model should achieve very high training accuracy
+# - If validation loss diverges from training loss -> OVERFITTING detected
+# - If no overfitting occurs -> Can add even more capacity or data augmentation
+# - Model parameters: ~50-100M (vs ~5-10M for default)

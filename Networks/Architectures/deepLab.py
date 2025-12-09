@@ -4,7 +4,7 @@ import torch.nn.functional as F
 
 class ASPP(nn.Module):
     """Atrous Spatial Pyramid Pooling"""
-    def __init__(self, in_channels, out_channels=256):
+    def __init__(self, in_channels, out_channels=256, dropout=0.5):
         super(ASPP, self).__init__()
         
         self.conv1 = nn.Conv2d(in_channels, out_channels, 1, bias=False)
@@ -28,7 +28,7 @@ class ASPP(nn.Module):
         
         self.conv5 = nn.Conv2d(out_channels * 5, out_channels, 1, bias=False)
         self.bn5 = nn.BatchNorm2d(out_channels)
-        self.dropout = nn.Dropout(0.5)
+        self.dropout = nn.Dropout(dropout)
 
     def forward(self, x):
         x1 = F.relu(self.bn1(self.conv1(x)))
@@ -49,6 +49,8 @@ class DeepLabV3Plus(nn.Module):
     def __init__(self, param):
         super(DeepLabV3Plus, self).__init__()
         backbone_channels = param["MODEL"].get("BACKBONE_CHANNELS", 64)
+        aspp_output_channels = param["MODEL"].get("ASPP_OUTPUT_CHANNELS", 256)
+        aspp_dropout = param["MODEL"].get("ASPP_DROPOUT", 0.5)
         
         # Encoder simplifié (en pratique on utiliserait ResNet)
         self.encoder1 = nn.Sequential(
@@ -72,12 +74,12 @@ class DeepLabV3Plus(nn.Module):
             nn.ReLU()
         )
         
-        # ASPP
-        self.aspp = ASPP(backbone_channels*4, backbone_channels*4)
+        # ASPP with configurable parameters
+        self.aspp = ASPP(backbone_channels*4, aspp_output_channels, dropout=aspp_dropout)
         
         # Decoder
         self.decoder1 = nn.Sequential(
-            nn.Conv2d(backbone_channels*4, backbone_channels*2, 1, bias=False),
+            nn.Conv2d(aspp_output_channels, backbone_channels*2, 1, bias=False),
             nn.BatchNorm2d(backbone_channels*2),
             nn.ReLU()
         )

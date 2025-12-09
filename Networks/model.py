@@ -60,10 +60,12 @@ class Network_Class:
         self.imgDirectory  = imgDirectory
         self.maskDirectory = maskDirectory
         self.resultsPath   = resultsPath
+        self.param         = param
         self.epoch         = param["TRAINING"]["EPOCH"]
         self.device        = param["TRAINING"]["DEVICE"]
         self.lr            = param["TRAINING"]["LEARNING_RATE"]
         self.batchSize     = param["TRAINING"]["BATCH_SIZE"]
+        self.weight_decay  = param["TRAINING"].get("WEIGHT_DECAY", 0.0)
 
         # -----------------------------------
         # NETWORK ARCHITECTURE INITIALISATION
@@ -71,10 +73,78 @@ class Network_Class:
         self.model = ImprovedU_net(param).to(self.device)
 
         # -------------------
-        # TRAINING PARAMETERS
+        # LOSS FUNCTION
         # -------------------
-        self.criterion = nn.CrossEntropyLoss()  # ← AJOUTÉ: pour segmentation multi-classes
-        self.optimizer = torch.optim.SGD(self.model.parameters(), lr=self.lr)  # ← AJOUTÉ
+        loss_type = param["MODEL"].get("LOSS_TYPE", "CrossEntropyLoss")
+        class_weights = param["MODEL"].get("CLASS_WEIGHTS", None)
+        
+        if class_weights is not None:
+            class_weights = torch.tensor(class_weights, dtype=torch.float32).to(self.device)
+        
+        if loss_type == "CrossEntropyLoss":
+            self.criterion = nn.CrossEntropyLoss(weight=class_weights)
+        else:
+            self.criterion = nn.CrossEntropyLoss(weight=class_weights)
+            print(f"⚠️ Loss type '{loss_type}' not implemented, using CrossEntropyLoss")
+        
+        # -------------------
+        # OPTIMIZER
+        # -------------------
+        optimizer_type = param["TRAINING"].get("OPTIMIZER", "SGD")
+        
+        if optimizer_type == "SGD":
+            momentum = param["TRAINING"].get("MOMENTUM", 0.9)
+            self.optimizer = torch.optim.SGD(
+                self.model.parameters(), 
+                lr=self.lr, 
+                momentum=momentum,
+                weight_decay=self.weight_decay
+            )
+        elif optimizer_type == "Adam":
+            self.optimizer = torch.optim.Adam(
+                self.model.parameters(), 
+                lr=self.lr,
+                weight_decay=self.weight_decay
+            )
+        elif optimizer_type == "AdamW":
+            self.optimizer = torch.optim.AdamW(
+                self.model.parameters(), 
+                lr=self.lr,
+                weight_decay=self.weight_decay
+            )
+        else:
+            print(f"⚠️ Optimizer '{optimizer_type}' not implemented, using SGD")
+            self.optimizer = torch.optim.SGD(self.model.parameters(), lr=self.lr)
+        
+        # -------------------
+        # LEARNING RATE SCHEDULER
+        # -------------------
+        lr_scheduler_type = param["TRAINING"].get("LR_SCHEDULER", None)
+        self.scheduler = None
+        
+        if lr_scheduler_type == "StepLR":
+            step_size = param["TRAINING"].get("LR_STEP_SIZE", 10)
+            gamma = param["TRAINING"].get("LR_GAMMA", 0.1)
+            self.scheduler = torch.optim.lr_scheduler.StepLR(
+                self.optimizer, step_size=step_size, gamma=gamma
+            )
+        elif lr_scheduler_type == "ReduceLROnPlateau":
+            gamma = param["TRAINING"].get("LR_GAMMA", 0.1)
+            self.scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
+                self.optimizer, mode='min', factor=gamma, patience=5, verbose=True
+            )
+        elif lr_scheduler_type == "CosineAnnealingLR":
+            self.scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(
+                self.optimizer, T_max=self.epoch
+            )
+        
+        # -------------------
+        # EARLY STOPPING
+        # -------------------
+        self.early_stopping = param["TRAINING"].get("EARLY_STOPPING", False)
+        self.patience = param["TRAINING"].get("PATIENCE", 5)
+        self.best_val_loss = float('inf')
+        self.patience_counter = 0
 
         # ----------------------------------------------------
         # DATASET INITIALISATION (from the dataLoader.py file)
@@ -101,6 +171,7 @@ class Network_Class:
     # -----------------------------------
     def train(self): 
         best_loss = float('inf')
+        modelWts = None
         
         # train for a given number of epochs
         for epoch in range(self.epoch):
@@ -130,11 +201,31 @@ class Network_Class:
             val_loss = self.validate()
             self.val_losses.append(val_loss)
             
-            print(f"Epoch [{epoch+1}/{self.epoch}] - Train Loss: {avg_train_loss:.4f} - Val Loss: {val_loss:.4f}")
+            # Get current learning rate
+            current_lr = self.optimizer.param_groups[0]['lr']
+            print(f"Epoch [{epoch+1}/{self.epoch}] - Train Loss: {avg_train_loss:.4f} - Val Loss: {val_loss:.4f} - LR: {current_lr:.6f}")
             
+            # Update learning rate scheduler
+            if self.scheduler is not None:
+                if isinstance(self.scheduler, torch.optim.lr_scheduler.ReduceLROnPlateau):
+                    self.scheduler.step(val_loss)
+                else:
+                    self.scheduler.step()
+            
+            # Save best model
             if val_loss < best_loss:
                 best_loss = val_loss
                 modelWts = copy.deepcopy(self.model.state_dict())
+                self.patience_counter = 0
+                print(f"✓ New best validation loss: {best_loss:.4f}")
+            else:
+                self.patience_counter += 1
+            
+            # Early stopping check
+            if self.early_stopping and self.patience_counter >= self.patience:
+                print(f"\n⚠️ Early stopping triggered after {epoch+1} epochs")
+                print(f"Best validation loss: {best_loss:.4f}")
+                break
         
         # Print learning curves
         self.plot_learning_curves()
@@ -142,8 +233,12 @@ class Network_Class:
         # Save the model weights
         wghtsPath  = self.resultsPath + '/_Weights/'
         createFolder(wghtsPath)
-        torch.save(modelWts, wghtsPath + '/wghts.pkl')
-        print("Training completed and weights saved!")
+        if modelWts is not None:
+            torch.save(modelWts, wghtsPath + '/wghts.pkl')
+            print("✓ Training completed and best weights saved!")
+        else:
+            torch.save(self.model.state_dict(), wghtsPath + '/wghts.pkl')
+            print("✓ Training completed and final weights saved!")
 
     def validate(self):
         """Validation step"""

@@ -4,20 +4,56 @@ DATASET:
   RESIZE_SHAPE: 64x64
 
 MODEL:
-  # A parameter to control model complexity 
-  # (i.e. number of trainable parameters)
-  #32
+  # Architecture parameters
+  # NB_CHANNEL controls the base number of channels in encoder
+  # Each encoder level multiplies by 2: NB_CHANNEL, 2*NB_CHANNEL, 4*NB_CHANNEL
   NB_CHANNEL: 64
+  
+  # BACKBONE_CHANNELS: controls the starting channels for DeepLabV3+ encoder
+  # Recommended values: 64 (small), 128 (medium), 256 (large)
+  BACKBONE_CHANNELS: 64
+  
+  # ASPP configuration (Atrous Spatial Pyramid Pooling)
+  # ASPP_OUTPUT_CHANNELS: dimensionality of ASPP output features
+  ASPP_OUTPUT_CHANNELS: 256
+  ASPP_DROPOUT: 0.5
+  
+  # Regularization
   DROPOUT: 0.2
   USE_ATTENTION: FALSE
-        
-  # Do not hesitate to add other parameters...
+  
+  # Loss function parameters
+  # Options: CrossEntropyLoss, FocalLoss, DiceLoss, CombinedLoss
+  LOSS_TYPE: CrossEntropyLoss
+  
+  # Class weights for handling class imbalance (optional)
+  # Set to null for no weighting
+  CLASS_WEIGHTS: null
+  # Example: [1.0, 2.0, 1.5, 1.0, 1.0] for 5 classes
   
 TRAINING: 
+  # Optimizer parameters
   LEARNING_RATE: 0.001
-  EPOCH: 10
+  WEIGHT_DECAY: 0.0
+  # Optimizer type: SGD, Adam, AdamW
+  OPTIMIZER: Adam
+  MOMENTUM: 0.9  # Only for SGD
+  
+  # Learning rate scheduler
+  # Options: None, StepLR, ReduceLROnPlateau, CosineAnnealingLR
+  LR_SCHEDULER: null
+  LR_STEP_SIZE: 10  # For StepLR
+  LR_GAMMA: 0.1     # For StepLR
+  
+  # Training parameters
+  EPOCH: 30
   BATCH_SIZE: 16
+  
+  # Hardware
   # cpu (to run on cpu) or cuda (to run on gpu)
-  DEVICE: cpu 
-  # Do not hesitate to add other parameters...
+  DEVICE: cpu
+  
+  # Early stopping (optional)
+  EARLY_STOPPING: FALSE
+  PATIENCE: 5
 
