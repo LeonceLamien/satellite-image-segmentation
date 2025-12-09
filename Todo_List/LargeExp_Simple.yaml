@@ -1,0 +1,82 @@
+---
+DATASET:
+  # size of the images 
+  RESIZE_SHAPE: 64x64
+  
+  # Data Augmentation - MINIMAL (seulement les plus sûres)
+  USE_AUGMENTATION: TRUE
+  # Geometric - Seulement les flips (invariance claire)
+  HORIZONTAL_FLIP: 0.5
+  VERTICAL_FLIP: 0.3
+  ROTATE_LIMIT: 0  # Désactivé
+  SHIFT_SCALE_ROTATE: 0  # Désactivé
+  # Color - Très léger
+  COLOR_JITTER: 0.2  # Très réduit
+  HUE_SAT_VALUE: 0  # Désactivé
+  BRIGHTNESS_CONTRAST: 0.2  # Très réduit
+  # Noise - Désactivé
+  GAUSSIAN_BLUR: 0
+  GAUSSIAN_NOISE: 0
+
+MODEL:
+  # Architecture - Même capacité
+  NB_CHANNEL: 256
+  BACKBONE_CHANNELS: 256
+  
+  # ASPP configuration - Dropout standard
+  ASPP_OUTPUT_CHANNELS: 512
+  ASPP_DROPOUT: 0.4
+  
+  # Regularization - MINIMAL
+  DROPOUT: 0.15  # Très léger (proche de LargeExp original 0.1)
+  USE_ATTENTION: FALSE
+  
+  # Loss function parameters
+  LOSS_TYPE: CrossEntropyLoss
+  
+  # Class weights - AUCUN (apprentissage naturel)
+  CLASS_WEIGHTS: null
+  
+TRAINING: 
+  # Optimizer parameters - Régularisation MINIMALE
+  LEARNING_RATE: 0.0005  # Même que LargeExp
+  WEIGHT_DECAY: 0.00001  # Très léger (10x moins que précédent)
+  OPTIMIZER: Adam  # Retour à Adam simple (pas AdamW)
+  MOMENTUM: 0.9
+  
+  # Learning rate scheduler - PATIENCE ÉLEVÉE
+  LR_SCHEDULER: ReduceLROnPlateau
+  LR_STEP_SIZE: 10
+  LR_GAMMA: 0.5
+  
+  # Training parameters
+  EPOCH: 50
+  BATCH_SIZE: 8
+  
+  # Hardware
+  DEVICE: cuda
+  
+  # Early stopping - Très patient
+  EARLY_STOPPING: TRUE
+  PATIENCE: 20  # Double patience (vs 10 dans LargeExp)
+
+# Philosophy: KISS (Keep It Simple, Stupid)
+# 
+# Leçons apprises:
+# 1. Class weights cassent tout → AUCUN weight
+# 2. Trop d'augmentation → Seulement flips + color léger
+# 3. Trop de régularisation → Dropout minimal
+# 4. LR scheduler agressif → Patience élevée
+#
+# Stratégie:
+# - Laisser le GRAND MODÈLE apprendre naturellement
+# - Régularisation MINIMALE (juste ce qu'il faut)
+# - Augmentation LÉGÈRE (pas agressive)
+# - PATIENCE élevée (laisser converger)
+#
+# Target:
+# - Train loss: ~0.40-0.45 (entre LargeExp 0.33 et Balanced 0.55)
+# - Val loss: ~0.43-0.47
+# - Gap: 0.03-0.05 (acceptable)
+# - Test Accuracy: > 0.72 (au moins égal à LargeExp)
+# - Apprentissage STABLE sans effondrements
