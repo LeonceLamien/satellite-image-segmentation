@@ -21,7 +21,62 @@ torch.manual_seed(2885)
 from torch.utils.data import DataLoader
 from torch.utils.data import random_split
 import torch.nn as nn
+import torch.nn.functional as F
 import torch.optim
+
+
+# --------------------------------------------------------------------------------
+# FOCAL LOSS - For handling class imbalance
+# --------------------------------------------------------------------------------
+class FocalLoss(nn.Module):
+    def __init__(self, alpha=None, gamma=2.0, reduction='mean'):
+        """
+        Focal Loss for addressing class imbalance
+        Args:
+            alpha: Class weights (tensor of size [num_classes])
+            gamma: Focusing parameter (default 2.0)
+            reduction: 'mean' or 'sum'
+        """
+        super(FocalLoss, self).__init__()
+        self.alpha = alpha
+        self.gamma = gamma
+        self.reduction = reduction
+        
+    def forward(self, inputs, targets):
+        """
+        Args:
+            inputs: [N, C, H, W] - raw logits from model
+            targets: [N, H, W] - ground truth labels
+        """
+        # Get log probabilities
+        log_probs = F.log_softmax(inputs, dim=1)
+        
+        # Gather log probabilities for target classes
+        targets_one_hot = F.one_hot(targets, num_classes=inputs.size(1))  # [N, H, W, C]
+        targets_one_hot = targets_one_hot.permute(0, 3, 1, 2).float()  # [N, C, H, W]
+        
+        # Get log prob for correct class
+        log_pt = (log_probs * targets_one_hot).sum(dim=1)  # [N, H, W]
+        pt = torch.exp(log_pt)  # Probability of correct class
+        
+        # Focal term: (1 - pt)^gamma
+        focal_term = (1 - pt) ** self.gamma
+        
+        # Focal loss
+        loss = -focal_term * log_pt
+        
+        # Apply alpha weighting if provided
+        if self.alpha is not None:
+            alpha_t = self.alpha[targets]  # [N, H, W]
+            loss = alpha_t * loss
+        
+        # Reduction
+        if self.reduction == 'mean':
+            return loss.mean()
+        elif self.reduction == 'sum':
+            return loss.sum()
+        else:
+            return loss
 
 
 # --------------------------------------------------------------------------------
@@ -83,6 +138,10 @@ class Network_Class:
         
         if loss_type == "CrossEntropyLoss":
             self.criterion = nn.CrossEntropyLoss(weight=class_weights)
+        elif loss_type == "FocalLoss":
+            gamma = param["MODEL"].get("FOCAL_GAMMA", 2.0)
+            self.criterion = FocalLoss(alpha=class_weights, gamma=gamma)
+            print(f"✓ Using Focal Loss with gamma={gamma}")
         else:
             self.criterion = nn.CrossEntropyLoss(weight=class_weights)
             print(f"⚠️ Loss type '{loss_type}' not implemented, using CrossEntropyLoss")

@@ -1,0 +1,81 @@
+---
+DATASET:
+  # size of the images 
+  RESIZE_SHAPE: 64x64
+  
+  # Data Augmentation - AUGMENTÉE (plus agressive que Simple)
+  USE_AUGMENTATION: TRUE
+  # Geometric - Plus variée
+  HORIZONTAL_FLIP: 0.5
+  VERTICAL_FLIP: 0.4
+  ROTATE_LIMIT: 10  # Léger
+  SHIFT_SCALE_ROTATE: 0.3  # Modéré
+  # Color - Plus variée
+  COLOR_JITTER: 0.4
+  HUE_SAT_VALUE: 0.3
+  BRIGHTNESS_CONTRAST: 0.4
+  # Noise - Très léger
+  GAUSSIAN_BLUR: 0.1
+  GAUSSIAN_NOISE: 0.05
+
+MODEL:
+  # Architecture - Même capacité
+  NB_CHANNEL: 256
+  BACKBONE_CHANNELS: 256
+  
+  # ASPP configuration
+  ASPP_OUTPUT_CHANNELS: 512
+  ASPP_DROPOUT: 0.4
+  
+  # Regularization - AUGMENTÉE
+  DROPOUT: 0.2  # Plus élevé pour compenser augmentation
+  USE_ATTENTION: FALSE
+  
+  # Loss function
+  LOSS_TYPE: CrossEntropyLoss
+  
+  # Class weights - MODÉRÉS
+  CLASS_WEIGHTS: [0.95, 2.0, 1.15, 1.0, 0.9]
+  # Plus doux que Balanced (qui avait causé problèmes)
+  
+TRAINING: 
+  # Optimizer parameters
+  LEARNING_RATE: 0.0004  # Légèrement plus bas pour augmentation
+  WEIGHT_DECAY: 0.00003  # Un peu plus de régularisation
+  OPTIMIZER: Adam
+  MOMENTUM: 0.9
+  
+  # Learning rate scheduler
+  LR_SCHEDULER: ReduceLROnPlateau
+  LR_STEP_SIZE: 10
+  LR_GAMMA: 0.5
+  
+  # Training parameters
+  EPOCH: 60  # Plus d'epochs avec augmentation
+  BATCH_SIZE: 8
+  
+  # Hardware
+  DEVICE: cuda
+  
+  # Early stopping
+  EARLY_STOPPING: TRUE
+  PATIENCE: 20
+
+# Strategy: Augmentation + Class Weights Modérés
+# 
+# Différences vs LargeExp_Simple:
+# 1. Plus d'augmentation (mais pas excessif comme Balanced)
+# 2. Class weights MODÉRÉS (pas 4.0 mais 2.0 pour Class 1)
+# 3. Plus de régularisation (dropout 0.2)
+# 4. Plus d'epochs (60 vs 50)
+#
+# Philosophie:
+# - Augmentation pour généralisation
+# - Weights modérés pour équilibre
+# - Pas aussi agressif que Balanced (qui avait échoué)
+#
+# Target:
+# - Accuracy: 0.73-0.74
+# - Gap: < 0.06 (acceptable avec augmentation)
+# - Class 1 Recall: > 0.48
+# - Meilleure généralisation que Simple

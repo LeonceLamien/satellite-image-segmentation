@@ -1,0 +1,88 @@
+---
+DATASET:
+  # size of the images 
+  RESIZE_SHAPE: 64x64
+  
+  # Data Augmentation - MINIMAL (seulement les plus sûres)
+  USE_AUGMENTATION: TRUE
+  # Geometric - Seulement les flips
+  HORIZONTAL_FLIP: 0.5
+  VERTICAL_FLIP: 0.3
+  ROTATE_LIMIT: 0
+  SHIFT_SCALE_ROTATE: 0
+  # Color - Très léger
+  COLOR_JITTER: 0.2
+  HUE_SAT_VALUE: 0
+  BRIGHTNESS_CONTRAST: 0.2
+  # Noise - Désactivé
+  GAUSSIAN_BLUR: 0
+  GAUSSIAN_NOISE: 0
+
+MODEL:
+  # Architecture - Même capacité
+  NB_CHANNEL: 256
+  BACKBONE_CHANNELS: 256
+  
+  # ASPP configuration
+  ASPP_OUTPUT_CHANNELS: 512
+  ASPP_DROPOUT: 0.4
+  
+  # Regularization - MINIMAL
+  DROPOUT: 0.15
+  USE_ATTENTION: FALSE
+  
+  # Loss function - FOCAL LOSS for class imbalance
+  LOSS_TYPE: FocalLoss
+  FOCAL_GAMMA: 2.5  # Focus plus fort sur exemples difficiles
+  
+  # Class weights - LÉGERS (juste pour guider Focal Loss)
+  # Focal Loss gère déjà l'imbalance, weights légers en complément
+  CLASS_WEIGHTS: [1.0, 2.5, 1.2, 1.0, 0.9]
+  # Class 0 (36%): 1.0
+  # Class 1 (0.84%): 2.5 (focus principal, mais modéré avec Focal)
+  # Class 2 (6%): 1.2 (léger boost)
+  # Class 3 (13%): 1.0 (neutre, recall déjà bon)
+  # Class 4 (44%): 0.9 (légèrement réduit)
+  
+TRAINING: 
+  # Optimizer parameters
+  LEARNING_RATE: 0.0005
+  WEIGHT_DECAY: 0.00001
+  OPTIMIZER: Adam
+  MOMENTUM: 0.9
+  
+  # Learning rate scheduler - PATIENCE ÉLEVÉE
+  LR_SCHEDULER: ReduceLROnPlateau
+  LR_STEP_SIZE: 10
+  LR_GAMMA: 0.5
+  
+  # Training parameters
+  EPOCH: 50
+  BATCH_SIZE: 8
+  
+  # Hardware
+  DEVICE: cuda
+  
+  # Early stopping
+  EARLY_STOPPING: TRUE
+  PATIENCE: 20
+
+# Strategy: Focal Loss + Augmentation Minimale
+# 
+# Améliorations vs LargeExp_Simple:
+# 1. Focal Loss (gamma=2.5): Focus automatique sur Class 1 difficile
+# 2. Class weights LÉGERS: Guidance douce (pas agressive)
+# 3. Même augmentation minimale (fonctionne bien)
+# 4. Même régularisation minimale (gap=0.03 excellent)
+#
+# Focal Loss Benefits:
+# - Focus sur exemples mal classés (Class 1!)
+# - Réduit poids des exemples faciles (Classes 0, 3)
+# - Pas besoin de class weights forts
+#
+# Target:
+# - Accuracy: > 0.735 (amélioration de +0.5%)
+# - IoU: > 0.590 (amélioration)
+# - Gap: < 0.05 (maintenir)
+# - Class 1 Recall: > 0.50 (OBJECTIF PRINCIPAL)
+# - Class 4 Recall: > 0.55 (amélioration)
