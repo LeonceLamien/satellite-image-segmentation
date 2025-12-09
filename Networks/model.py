@@ -131,7 +131,7 @@ class Network_Class:
         elif lr_scheduler_type == "ReduceLROnPlateau":
             gamma = param["TRAINING"].get("LR_GAMMA", 0.1)
             self.scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
-                self.optimizer, mode='min', factor=gamma, patience=5, verbose=True
+                self.optimizer, mode='min', factor=gamma, patience=5
             )
         elif lr_scheduler_type == "CosineAnnealingLR":
             self.scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(
