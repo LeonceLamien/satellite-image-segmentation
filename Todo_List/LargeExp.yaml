@@ -48,7 +48,7 @@ TRAINING:
   BATCH_SIZE: 8  # Reduced batch size due to larger model
   
   # Hardware
-  DEVICE: cpu  # Change to 'cuda' if GPU available for faster training
+  DEVICE: cuda  # Change to 'cuda' if GPU available for faster training
   
   # Early stopping - Monitor for overfitting
   EARLY_STOPPING: TRUE
