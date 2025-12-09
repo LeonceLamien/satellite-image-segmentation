@@ -2,6 +2,9 @@
 DATASET:
   # size of the images 
   RESIZE_SHAPE: 64x64
+  
+  # Data Augmentation (disabled for baseline test)
+  USE_AUGMENTATION: FALSE
 
 MODEL:
   # Architecture parameters - LARGE MODEL CONFIGURATION

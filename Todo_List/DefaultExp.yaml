@@ -2,6 +2,18 @@
 DATASET:
   # size of the images 
   RESIZE_SHAPE: 64x64
+  
+  # Data Augmentation (disabled by default)
+  USE_AUGMENTATION: FALSE
+  HORIZONTAL_FLIP: 0.5
+  VERTICAL_FLIP: 0.3
+  ROTATE_LIMIT: 25
+  SHIFT_SCALE_ROTATE: 0.5
+  COLOR_JITTER: 0.6
+  HUE_SAT_VALUE: 0.6
+  BRIGHTNESS_CONTRAST: 0.5
+  GAUSSIAN_BLUR: 0.3
+  GAUSSIAN_NOISE: 0.2
 
 MODEL:
   # Architecture parameters

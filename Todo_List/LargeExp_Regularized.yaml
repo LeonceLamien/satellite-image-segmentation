@@ -1,0 +1,74 @@
+---
+DATASET:
+  # size of the images 
+  RESIZE_SHAPE: 64x64
+  
+  # Data Augmentation for training (to reduce overfitting)
+  USE_AUGMENTATION: TRUE
+  # Geometric augmentations
+  HORIZONTAL_FLIP: 0.5
+  VERTICAL_FLIP: 0.3
+  ROTATE_LIMIT: 25
+  SHIFT_SCALE_ROTATE: 0.5
+  # Color augmentations
+  COLOR_JITTER: 0.6
+  HUE_SAT_VALUE: 0.6
+  BRIGHTNESS_CONTRAST: 0.5
+  # Noise/blur augmentations
+  GAUSSIAN_BLUR: 0.3
+  GAUSSIAN_NOISE: 0.0
+
+MODEL:
+  # Architecture parameters - LARGE MODEL WITH REGULARIZATION
+  
+  # Same large capacity as LargeExp
+  NB_CHANNEL: 256
+  BACKBONE_CHANNELS: 256
+  
+  # ASPP configuration with MORE dropout
+  ASPP_OUTPUT_CHANNELS: 512
+  ASPP_DROPOUT: 0.5  # Increased from 0.3 to 0.5 for regularization
+  
+  # Regularization - INCREASED dropout
+  DROPOUT: 0.3  # Increased from 0.1 to 0.3
+  USE_ATTENTION: FALSE
+  
+  # Loss function parameters
+  LOSS_TYPE: CrossEntropyLoss
+  
+  # Class weights to help with imbalanced classes
+  # Class 1 (0.84%) needs most help, then Class 2 (6%), Class 3 (13%)
+  CLASS_WEIGHTS: [1.0, 3.0, 1.5, 1.2, 1.0]
+  
+TRAINING: 
+  # Optimizer parameters with WEIGHT DECAY for L2 regularization
+  LEARNING_RATE: 0.0003  # Slightly lower than LargeExp
+  WEIGHT_DECAY: 0.0001  # L2 regularization to penalize large weights
+  OPTIMIZER: AdamW  # AdamW handles weight decay better than Adam
+  MOMENTUM: 0.9
+  
+  # Learning rate scheduler
+  LR_SCHEDULER: ReduceLROnPlateau
+  LR_STEP_SIZE: 10
+  LR_GAMMA: 0.5
+  
+  # Training parameters
+  EPOCH: 40  # More epochs since augmentation slows learning
+  BATCH_SIZE: 8
+  
+  # Hardware
+  DEVICE: cuda
+  
+  # Early stopping with more patience
+  EARLY_STOPPING: TRUE
+  PATIENCE: 12  # Increased patience for augmented training
+
+# Expected improvements:
+# 1. Data augmentation: forces model to learn invariant features
+# 2. Higher dropout (0.3 vs 0.1): prevents co-adaptation of neurons
+# 3. Weight decay (0.0001): L2 regularization, penalizes large weights
+# 4. AdamW optimizer: better weight decay implementation
+# 5. Class weights: helps with imbalanced dataset
+# 6. Lower LR (0.0003): more stable training with augmentation
+#
+# Target: Reduce val loss gap from 0.10 to < 0.05
