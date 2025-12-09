@@ -38,7 +38,7 @@ MODEL:
   
   # Class weights to help with imbalanced classes
   # Class 1 (0.84%) needs most help, then Class 2 (6%), Class 3 (13%)
-  CLASS_WEIGHTS: [1.0, 3.0, 1.5, 1.2, 1.0]
+  CLASS_WEIGHTS: null
   
 TRAINING: 
   # Optimizer parameters with WEIGHT DECAY for L2 regularization
@@ -53,7 +53,7 @@ TRAINING:
   LR_GAMMA: 0.5
   
   # Training parameters
-  EPOCH: 40  # More epochs since augmentation slows learning
+  EPOCH: 50  # More epochs since augmentation slows learning
   BATCH_SIZE: 8
   
   # Hardware
