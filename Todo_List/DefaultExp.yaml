@@ -51,7 +51,7 @@ TRAINING:
   
   # Hardware
   # cpu (to run on cpu) or cuda (to run on gpu)
-  DEVICE: cpu
+  DEVICE: cuda
   
   # Early stopping (optional)
   EARLY_STOPPING: FALSE
