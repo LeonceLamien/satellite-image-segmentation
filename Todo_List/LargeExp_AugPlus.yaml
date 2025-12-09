@@ -51,8 +51,8 @@ TRAINING:
   LR_GAMMA: 0.5
   
   # Training parameters
-  EPOCH: 60  # Plus d'epochs avec augmentation
-  BATCH_SIZE: 8
+  EPOCH: 200  # Plus d'epochs avec augmentation
+  BATCH_SIZE: 16
   
   # Hardware
   DEVICE: cuda
