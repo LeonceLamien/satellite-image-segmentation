@@ -15,6 +15,7 @@ def create_submission_zip(output_name="submission.zip"):
     # Files and folders to include
     items_to_include = [
         "visualize_augmentations.py",
+        "visualize_segmentation.py",
         "main.py",
         "check_mask_colors.py",
         "Todo_List/",
