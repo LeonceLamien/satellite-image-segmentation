@@ -8,10 +8,18 @@ TASK:
 
 MODEL:
   BASE_CHANNELS: 64
-  DROPOUT: 0.1
+  DROPOUT: 0.15  # More dropout for better generalization
 
 TRAIN:
-  NUM_EPOCHS: 20
+  NUM_EPOCHS: 50  # More epochs for better convergence
   BATCH_SIZE: 32
   LEARNING_RATE: 0.001
+  WEIGHT_DECAY: 0.0001  # L2 regularization
   USE_SCHEDULER: true
+  # Early stopping
+  EARLY_STOP_PATIENCE: 10  # Stop if no improvement for 10 epochs
+  EARLY_STOP_MIN_DELTA: 0.0001  # Minimum change to count as improvement
+  # Data augmentation
+  USE_AUGMENTATION: true
+  AUG_FLIP_PROB: 0.5
+  AUG_ROTATE_PROB: 0.3

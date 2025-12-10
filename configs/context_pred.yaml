@@ -4,16 +4,20 @@ DATASET:
   RESIZE_SHAPE: "64x64"
 
 TASK:
-  MASK_RATIO: 0.3  # Proportion of image to mask (30%)
+  MASK_RATIO: 0.35  # Optimal masking: challenging but learnable
   PATCH_SIZE: 8     # Size of masked patches (8x8)
-  MASKED_ONLY_LOSS: false  # If true, compute loss only on masked regions
+  MASKED_ONLY_LOSS: true  # Focus loss on masked regions for better features
 
 MODEL:
   BASE_CHANNELS: 64
-  DROPOUT: 0.1
+  DROPOUT: 0.15  # More dropout for better generalization
 
 TRAIN:
-  NUM_EPOCHS: 20
+  NUM_EPOCHS: 50  # More epochs for better convergence
   BATCH_SIZE: 32
   LEARNING_RATE: 0.001
+  WEIGHT_DECAY: 0.0001  # L2 regularization for better features
   USE_SCHEDULER: true
+  # Early stopping
+  EARLY_STOP_PATIENCE: 10  # Stop if no improvement for 10 epochs
+  EARLY_STOP_MIN_DELTA: 0.0001  # Minimum change to count as improvement

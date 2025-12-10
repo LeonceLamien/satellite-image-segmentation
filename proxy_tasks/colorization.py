@@ -215,16 +215,38 @@ class ColorizationAutoencoder(nn.Module):
 
 def colorization_loss(pred_rgb, target_rgb):
     """
-    Loss function for colorization task.
+    Enhanced loss function for colorization task.
+    Combines MSE (color accuracy) with chrominance-focused loss.
     
     Args:
         pred_rgb: Predicted RGB image (B, 3, H, W)
         target_rgb: Ground truth RGB image (B, 3, H, W)
     
     Returns:
-        loss: Scalar MSE loss
+        loss: Scalar loss combining RGB MSE and perceptual loss
     """
-    return F.mse_loss(pred_rgb, target_rgb)
+    # RGB MSE loss
+    rgb_loss = F.mse_loss(pred_rgb, target_rgb)
+    
+    # Chrominance loss (focus on color, not just luminance)
+    # Convert to YUV-like space where Y=luminance, U,V=chrominance
+    def rgb_to_yuv(rgb):
+        # Simplified YUV transform
+        y = 0.299 * rgb[:, 0:1] + 0.587 * rgb[:, 1:2] + 0.114 * rgb[:, 2:3]
+        u = rgb[:, 2:3] - y  # Blue - luminance
+        v = rgb[:, 0:1] - y  # Red - luminance
+        return y, u, v
+    
+    pred_y, pred_u, pred_v = rgb_to_yuv(pred_rgb)
+    target_y, target_u, target_v = rgb_to_yuv(target_rgb)
+    
+    # Focus more on chrominance (color) than luminance
+    chroma_loss = F.mse_loss(pred_u, target_u) + F.mse_loss(pred_v, target_v)
+    
+    # Combine: RGB (global) + chrominance (color-focused)
+    total_loss = rgb_loss + 0.5 * chroma_loss
+    
+    return total_loss
 
 
 if __name__ == "__main__":

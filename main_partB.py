@@ -146,17 +146,23 @@ class SSLTrainer:
     def _init_optimizer(self):
         """Initialize optimizer and scheduler."""
         lr = self.param["TRAIN"]["LEARNING_RATE"]
-        self.optimizer = torch.optim.Adam(self.model.parameters(), lr=lr)
+        weight_decay = self.param["TRAIN"].get("WEIGHT_DECAY", 0.0)
+        self.optimizer = torch.optim.Adam(
+            self.model.parameters(), 
+            lr=lr,
+            weight_decay=weight_decay  # L2 regularization
+        )
         
         # Optional: Learning rate scheduler
         if self.param["TRAIN"].get("USE_SCHEDULER", False):
+            # More aggressive scheduler for better convergence
             self.scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
-                self.optimizer, mode='min', patience=5, factor=0.5
+                self.optimizer, mode='min', patience=3, factor=0.5, min_lr=1e-6
             )
         else:
             self.scheduler = None
         
-        print(f"✓ Optimizer: Adam (lr={lr})")
+        print(f"✓ Optimizer: Adam (lr={lr}, weight_decay={weight_decay})")
     
     def train_epoch(self, epoch):
         """Train for one epoch."""
@@ -265,11 +271,18 @@ class SSLTrainer:
         plt.close()
     
     def train(self):
-        """Main training loop."""
+        """Main training loop with early stopping."""
         num_epochs = self.param["TRAIN"]["NUM_EPOCHS"]
+        early_stop_patience = self.param["TRAIN"].get("EARLY_STOP_PATIENCE", None)
+        early_stop_min_delta = self.param["TRAIN"].get("EARLY_STOP_MIN_DELTA", 0.0001)
+        
+        # Early stopping variables
+        patience_counter = 0
         
         print("\n" + "=" * 60)
         print(f"Starting training: {self.task_name.upper()}")
+        if early_stop_patience:
+            print(f"Early stopping: patience={early_stop_patience}, min_delta={early_stop_min_delta}")
         print("=" * 60)
         
         for epoch in range(1, num_epochs + 1):
@@ -291,10 +304,21 @@ class SSLTrainer:
                 print(f"  Learning Rate: {self.optimizer.param_groups[0]['lr']:.6f}")
             
             # Save checkpoint
-            is_best = val_loss < self.best_val_loss
+            is_best = val_loss < (self.best_val_loss - early_stop_min_delta)
             if is_best:
                 self.best_val_loss = val_loss
+                patience_counter = 0  # Reset counter
+            else:
+                patience_counter += 1
+            
             self.save_checkpoint(epoch, is_best)
+            
+            # Early stopping check
+            if early_stop_patience and patience_counter >= early_stop_patience:
+                print(f"\n⚠️  Early stopping triggered after {epoch} epochs")
+                print(f"   No improvement for {early_stop_patience} consecutive epochs")
+                print(f"   Best val loss: {self.best_val_loss:.4f}")
+                break
             
             # Plot losses
             if epoch % 5 == 0:

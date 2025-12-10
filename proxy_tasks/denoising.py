@@ -238,17 +238,36 @@ class DenoisingAutoencoder(nn.Module):
 
 def denoise_loss(pred_clean, target_clean):
     """
-    Loss function for denoising task.
-    Simple MSE between predicted and target clean images.
+    Enhanced loss function for denoising task.
+    Combines MSE (pixel-level) with gradient loss (edge preservation).
     
     Args:
         pred_clean: Predicted clean image (B, 3, H, W)
         target_clean: Ground truth clean image (B, 3, H, W)
     
     Returns:
-        loss: Scalar MSE loss
+        loss: Scalar loss combining MSE and gradient loss
     """
-    return F.mse_loss(pred_clean, target_clean)
+    # MSE loss (pixel-level reconstruction)
+    mse_loss = F.mse_loss(pred_clean, target_clean)
+    
+    # Gradient loss (edge preservation) - helps learn structural features
+    # Compute gradients in x and y directions
+    def compute_gradients(img):
+        # Sobel-like gradient computation
+        gx = img[:, :, :, 1:] - img[:, :, :, :-1]  # Horizontal gradient
+        gy = img[:, :, 1:, :] - img[:, :, :-1, :]  # Vertical gradient
+        return gx, gy
+    
+    pred_gx, pred_gy = compute_gradients(pred_clean)
+    target_gx, target_gy = compute_gradients(target_clean)
+    
+    gradient_loss = F.l1_loss(pred_gx, target_gx) + F.l1_loss(pred_gy, target_gy)
+    
+    # Combine losses (MSE dominant for denoising, gradient for structure)
+    total_loss = mse_loss + 0.1 * gradient_loss
+    
+    return total_loss
 
 
 if __name__ == "__main__":
