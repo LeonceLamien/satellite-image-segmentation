@@ -14,15 +14,15 @@ imgDirectory     = os.path.join(datasetDirectory, "images")
 maskDirectory    = os.path.join(datasetDirectory, "annotations")
 
 parser = argparse.ArgumentParser()
-parser.add_argument('-exp', type=str, default='DefaultExp')
+parser.add_argument('-exp', type=str, default='DeepLab_Adam')
 
 ######################################################################################
 #
 # MAIN PROCEDURE 
 # launches an experiment whose parameters are described in a yaml file  
 # 
-# Example of use in the terminal: python main.py -exp DefaultExp
-# with 'DefaultExp' beeing the name of the yaml file (in the Todo_list folder) with 
+# Example of use in the terminal: python main.py -exp ExperimentName
+# with 'ExperimentName' beeing the name of the yaml file (in the Todo_list folder) with 
 # the wanted configuration 
 # 
 ######################################################################################
