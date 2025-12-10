@@ -8,7 +8,8 @@ TASK:
 
 MODEL:
   BASE_CHANNELS: 64
-  DROPOUT: 0.15  # More dropout for better generalization
+  DROPOUT: 0.2
+  DILATION_RATES: [6, 12, 18]  # More dropout for better generalization
 
 TRAIN:
   NUM_EPOCHS: 50
