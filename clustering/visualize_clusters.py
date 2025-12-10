@@ -323,7 +323,7 @@ def main():
     cluster_dir = f"{args.exp}/_Clustering"
     
     if not os.path.exists(cluster_dir):
-        print(f"❌ Clustering directory not found: {cluster_dir}")
+        print(f"Clustering directory not found: {cluster_dir}")
         print("   Run cluster_features.py first!")
         return
     
@@ -349,7 +349,7 @@ def main():
     full_cluster_mask, coords = reconstruct_full_image(upscaled_tiles, tile_names, target_size)
     
     if full_cluster_mask is None:
-        print("❌ Failed to reconstruct full mask")
+        print("Failed to reconstruct full mask")
         return
     
     # Load ground truth

@@ -2,14 +2,14 @@
 PART B - CLUSTERING ON ENCODER FEATURES
 ========================================
 
-Extract features from trained encoder and apply clustering algorithm.
+Extract features from trained encoder and apply KMeans clustering.
 
 Pipeline:
     1. Load trained model from proxy task
     2. Extract encoder features from all training tiles
        - Shape: (N_train, C, H', W') where H' = H/8, W' = W/8
     3. Flatten features: (N_train × H' × W', C)
-    4. Apply clustering (KMeans, DBSCAN, etc.)
+    4. Apply KMeans clustering
     5. For test tiles:
        - Extract features
        - Assign cluster labels
@@ -19,12 +19,12 @@ Pipeline:
     6. Visualize pseudo-segmentation mask
 
 Usage:
-    python clustering/cluster_features.py --exp denoising_exp --n_clusters 5 --algorithm kmeans
+    python clustering/cluster_features.py --exp denoising_exp --task denoising --n_clusters 5
 """
 
 import torch
 import numpy as np
-from sklearn.cluster import KMeans, DBSCAN, AgglomerativeClustering
+from sklearn.cluster import KMeans
 from sklearn.preprocessing import StandardScaler
 import yaml
 import os
@@ -44,19 +44,17 @@ class FeatureClusterer:
     Extract features from encoder and apply clustering.
     """
     
-    def __init__(self, exp_dir, task_name, n_clusters=5, algorithm='kmeans', device='cpu'):
+    def __init__(self, exp_dir, task_name, n_clusters=5, device='cpu'):
         """
         Args:
             exp_dir: Path to experiment directory (e.g., "Results/denoising_exp")
             task_name: "denoising", "colorization", or "context_prediction"
-            n_clusters: Number of clusters
-            algorithm: "kmeans", "dbscan", or "agglomerative"
+            n_clusters: Number of clusters for KMeans
             device: "cpu" or "cuda"
         """
         self.exp_dir = exp_dir
         self.task_name = task_name
         self.n_clusters = n_clusters
-        self.algorithm = algorithm
         self.device = device
         
         # Load config and model
@@ -115,27 +113,16 @@ class FeatureClusterer:
         print(f"✓ Model loaded from: {weights_path}")
     
     def _init_clustering(self):
-        """Initialize clustering algorithm."""
-        if self.algorithm == 'kmeans':
-            self.clusterer = KMeans(
-                n_clusters=self.n_clusters,
-                random_state=42,
-                n_init=10
-            )
-        elif self.algorithm == 'dbscan':
-            self.clusterer = DBSCAN(
-                eps=0.5,
-                min_samples=5
-            )
-        elif self.algorithm == 'agglomerative':
-            self.clusterer = AgglomerativeClustering(
-                n_clusters=self.n_clusters,
-                linkage='ward'
-            )
-        else:
-            raise ValueError(f"Unknown algorithm: {self.algorithm}")
+        """Initialize KMeans clustering with optimal parameters."""
+        self.clusterer = KMeans(
+            n_clusters=self.n_clusters,
+            random_state=42,  # Pour reproductibilité
+            n_init=20,  # Plus d'initialisations pour meilleur résultat
+            max_iter=500,  # Plus d'itérations pour convergence
+            tol=1e-5  # Seuil de convergence strict
+        )
         
-        print(f"✓ Clustering: {self.algorithm} (n_clusters={self.n_clusters})")
+        print(f"✓ Clustering: KMeans with {self.n_clusters} clusters")
     
     def extract_features(self, dataset, set_name="train"):
         """
@@ -219,7 +206,7 @@ class FeatureClusterer:
     
     def predict_clustering(self, features_flat):
         """
-        Predict cluster labels for new features.
+        Predict cluster labels for new features using KMeans.
         
         Args:
             features_flat: Flattened features (M × H' × W', C)
@@ -230,33 +217,27 @@ class FeatureClusterer:
         # Standardize features
         features_scaled = self.scaler.transform(features_flat)
         
-        # Predict labels
-        if self.algorithm == 'kmeans':
-            labels = self.clusterer.predict(features_scaled)
-        elif self.algorithm in ['dbscan', 'agglomerative']:
-            # These don't have predict(), need to refit
-            # For simplicity, we'll refit (not ideal for large datasets)
-            labels = self.clusterer.fit_predict(features_scaled)
+        # Predict labels using KMeans
+        labels = self.clusterer.predict(features_scaled)
         
         return labels
     
     def save_clustering(self):
-        """Save clustering model and scaler."""
-        save_path = f"{self.cluster_dir}/clustering_{self.algorithm}.pkl"
+        """Save KMeans model and scaler."""
+        save_path = f"{self.cluster_dir}/clustering_kmeans_n{self.n_clusters}.pkl"
         
         with open(save_path, 'wb') as f:
             pickle.dump({
                 'clusterer': self.clusterer,
                 'scaler': self.scaler,
-                'n_clusters': self.n_clusters,
-                'algorithm': self.algorithm
+                'n_clusters': self.n_clusters
             }, f)
         
         print(f"✓ Clustering saved to: {save_path}")
     
     def load_clustering(self):
         """Load clustering model and scaler."""
-        load_path = f"{self.cluster_dir}/clustering_{self.algorithm}.pkl"
+        load_path = f"{self.cluster_dir}/clustering_kmeans_n{self.n_clusters}.pkl"
         
         with open(load_path, 'rb') as f:
             data = pickle.load(f)
@@ -328,17 +309,14 @@ class FeatureClusterer:
 
 
 def main():
-    parser = argparse.ArgumentParser(description='Cluster encoder features')
+    parser = argparse.ArgumentParser(description='Cluster encoder features with KMeans')
     parser.add_argument('--exp', type=str, required=True,
                        help='Experiment directory (e.g., Results/denoising_exp)')
     parser.add_argument('--task', type=str, required=True,
                        choices=['denoising', 'colorization', 'context_prediction'],
                        help='Proxy task name')
     parser.add_argument('--n_clusters', type=int, default=5,
-                       help='Number of clusters')
-    parser.add_argument('--algorithm', type=str, default='kmeans',
-                       choices=['kmeans', 'dbscan', 'agglomerative'],
-                       help='Clustering algorithm')
+                       help='Number of clusters for KMeans (default: 5)')
     parser.add_argument('--device', type=str, default='cpu',
                        choices=['cpu', 'cuda'],
                        help='Device to use')
@@ -355,7 +333,6 @@ def main():
         args.exp, 
         args.task,
         args.n_clusters,
-        args.algorithm,
         args.device
     )
     clusterer.run()

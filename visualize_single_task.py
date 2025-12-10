@@ -247,7 +247,7 @@ def main():
     # Load model
     model_path = os.path.join(args.exp, '_Weights', 'best_model.pth')
     if not os.path.exists(model_path):
-        print(f"❌ Model not found: {model_path}")
+        print(f"Model not found: {model_path}")
         return
     
     # Task-specific initialization
@@ -302,7 +302,7 @@ def main():
     plt.close()
     
     print("\n" + "=" * 70)
-    print("✅ Visualization completed!")
+    print("Visualization completed!")
     print("=" * 70)
 
 

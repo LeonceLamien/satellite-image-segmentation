@@ -23,18 +23,18 @@ from pathlib import Path
 def run_command(cmd, description):
     """Run a shell command and handle errors."""
     print("\n" + "=" * 80)
-    print(f"▶️  {description}")
+    print(f"{description}")
     print("=" * 80)
     print(f"Command: {' '.join(cmd)}\n")
     
     result = subprocess.run(cmd, capture_output=False, text=True)
     
     if result.returncode != 0:
-        print(f"\n❌ Error in: {description}")
+        print(f"\nError in: {description}")
         print(f"Command failed with return code {result.returncode}")
         sys.exit(1)
     
-    print(f"\n✅ Completed: {description}")
+    print(f"\nCompleted: {description}")
     return result
 
 
@@ -73,9 +73,9 @@ def main():
     
     # Task configuration mapping
     task_configs = {
-        'denoising': 'configs/denoising.yaml',
-        'colorization': 'configs/colorization.yaml',
-        'context_prediction': 'configs/context_pred.yaml'
+        'denoising': 'Todo_List/denoising.yaml',
+        'colorization': 'Todo_List/colorization.yaml',
+        'context_prediction': 'Todo_List/context_pred.yaml'
     }
     
     config_path = task_configs[args.task]
@@ -86,10 +86,10 @@ def main():
     # STEP 1: TRAINING
     # =========================================================================
     if args.skip_training and os.path.exists(model_path):
-        print(f"\n⏩ Skipping training (model exists: {model_path})")
+        print(f"\nSkipping training (model exists: {model_path})")
     else:
         cmd = [
-            sys.executable, 'main_partB.py',
+            sys.executable, 'main.py',
             '--task', args.task,
             '--config', config_path,
             '--device', args.device
@@ -108,7 +108,7 @@ def main():
         ]
         run_command(cmd, f"STEP 2/4: Visualizing {args.task} results")
     else:
-        print(f"\n⏩ Skipping task visualization")
+        print(f"\nSkipping task visualization")
     
     # =========================================================================
     # STEP 3: CLUSTERING
@@ -136,12 +136,10 @@ def main():
     # =========================================================================
     # SUMMARY
     # =========================================================================
-    print("\n" + "🎉" * 40)
     print("PIPELINE COMPLETED SUCCESSFULLY!")
-    print("🎉" * 40)
     
-    print(f"\n📁 Results saved in: {exp_dir}/")
-    print("\n📊 Generated files:")
+    print(f"\nResults saved in: {exp_dir}/")
+    print("\nGenerated files:")
     print(f"   • {exp_dir}/_Weights/best_model.pth")
     print(f"   • {exp_dir}/_Figures/training_curves.png")
     print(f"   • {exp_dir}/_Figures/{args.task}_results.png")
@@ -149,16 +147,6 @@ def main():
     print(f"   • {exp_dir}/cluster_labels_n{args.n_clusters}.npy")
     print(f"   • {exp_dir}/clustering_model_n{args.n_clusters}.pkl")
     print(f"   • {exp_dir}/_Figures/clustering_vs_gt_n{args.n_clusters}.png")
-    
-    print("\n💡 Next steps:")
-    print(f"   1. Check visualizations to verify results")
-    print(f"   2. Try different number of clusters:")
-    print(f"      python run_complete_pipeline.py --task {args.task} --n_clusters 8 --skip_training")
-    print(f"   3. Run other tasks:")
-    other_tasks = [t for t in ['denoising', 'colorization', 'context_prediction'] if t != args.task]
-    for task in other_tasks:
-        print(f"      python run_complete_pipeline.py --task {task} --device {args.device}")
-    print()
 
 
 if __name__ == "__main__":

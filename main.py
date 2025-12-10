@@ -8,13 +8,12 @@ Train encoder-decoder on self-supervised proxy tasks:
 3. Context Prediction
 
 Usage:
-    python main_partB.py --task denoising --config configs/denoising.yaml
-    python main_partB.py --task colorization --config configs/colorization.yaml
-    python main_partB.py --task context_prediction --config configs/context_pred.yaml
+    python main.py --task denoising --config Todo_List/denoising.yaml
+    python main.py --task colorization --config Todo_List/colorization.yaml
+    python main.py --task context_prediction --config Todo_List/context_pred.yaml
 """
 
 import torch
-import torch.nn as nn
 from torch.utils.data import DataLoader
 import yaml
 import os
@@ -315,7 +314,7 @@ class SSLTrainer:
             
             # Early stopping check
             if early_stop_patience and patience_counter >= early_stop_patience:
-                print(f"\n⚠️  Early stopping triggered after {epoch} epochs")
+                print(f"\nEarly stopping triggered after {epoch} epochs")
                 print(f"   No improvement for {early_stop_patience} consecutive epochs")
                 print(f"   Best val loss: {self.best_val_loss:.4f}")
                 break
@@ -346,7 +345,7 @@ def main():
     
     # Check if config exists
     if not os.path.exists(args.config):
-        print(f"❌ Config file not found: {args.config}")
+        print(f"Config file not found: {args.config}")
         return
     
     # Create trainer and train
