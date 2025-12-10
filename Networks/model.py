@@ -1,19 +1,20 @@
 from Dataset.dataLoader import *
 from Dataset.makeGraph import *
 from Networks.Architectures.basicNetwork import *
+from Networks.Architectures.improvedUNet import *
 from Networks.Architectures.deepLab import *
-import matplotlib.pyplot as plt
-import seaborn as sns
-from sklearn.metrics import roc_auc_score, roc_curve, auc, confusion_matrix, accuracy_score, precision_score, recall_score, f1_score, jaccard_score
+
+from sklearn.metrics import roc_curve, auc, confusion_matrix, accuracy_score, precision_score, recall_score, f1_score, jaccard_score
 from sklearn.preprocessing import label_binarize
         
 import numpy as np
 np.random.seed(2885)
-import os
-import copy
+
 import matplotlib.pyplot as plt
 import seaborn as sns
-        
+import os
+import copy
+
 import torch
 torch.manual_seed(2885)
 from torch.utils.data import DataLoader
@@ -59,17 +60,32 @@ class Network_Class:
         self.device        = param["TRAINING"]["DEVICE"]
         self.lr            = param["TRAINING"]["LEARNING_RATE"]
         self.batchSize     = param["TRAINING"]["BATCH_SIZE"]
+        self.optimizer_name = param["TRAINING"].get("OPTIMIZER", "Adam")
 
         # -----------------------------------
         # NETWORK ARCHITECTURE INITIALISATION
         # -----------------------------------
-        self.model = ImprovedU_net(param).to(self.device)
+        model_arch = param["MODEL"].get("ARCHITECTURE", "DeepLabV3Plus")
+        if model_arch == "DeepLabV3Plus":
+            self.model = DeepLabV3Plus(param).to(self.device)
+        elif model_arch == "ImprovedUNet":
+            self.model = ImprovedUNet(param).to(self.device)
+        else:
+            print(f"Unknown Model {model_arch}")
+            self.model = None
 
         # -------------------
         # TRAINING PARAMETERS
         # -------------------
         self.criterion = nn.CrossEntropyLoss()
-        self.optimizer = torch.optim.SGD(self.model.parameters(), lr=self.lr)
+        
+        if self.optimizer_name == "Adam":
+            self.optimizer = torch.optim.Adam(self.model.parameters(), lr=self.lr)
+        elif self.optimizer_name == "SDG":
+            self.optimizer = torch.optim.SGD(self.model.parameters(), lr=self.lr)
+        else:
+            print(f"Unknown Optimizer {self.optimizer_name}")
+            self.optimizer = None
 
         # ----------------------------------------------------
         # DATASET INITIALISATION (from the dataLoader.py file)
