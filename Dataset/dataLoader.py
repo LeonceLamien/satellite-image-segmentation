@@ -83,12 +83,46 @@ class LLNDataset(Dataset):
 # Do not hesitate to consider other useful transforms!
 # -----------------------------------------------------------------------
 def getTransforms_train(param): 
-    imgTransformsList = [alb.Resize(height = int(param["DATASET"]["RESIZE_SHAPE"].split("x")[0]), 
-                                    width  = int(param["DATASET"]["RESIZE_SHAPE"].split("x")[1])), 
-                         alb.Normalize(mean=(0.485, 0.456, 0.406), std=(0.229, 0.224, 0.225)), 
-                         alb.pytorch.transforms.ToTensorV2(), 
-                        ]
-    return alb.Compose(imgTransformsList)
+    transforms_list = [
+        alb.Resize(height=int(param["DATASET"]["RESIZE_SHAPE"].split("x")[0]), 
+                   width=int(param["DATASET"]["RESIZE_SHAPE"].split("x")[1]))
+    ]
+    
+    # Add augmentations if enabled
+    if param["DATASET"].get("USE_AUGMENTATION", False):
+        if param["DATASET"].get("HORIZONTAL_FLIP", False):
+            transforms_list.append(alb.HorizontalFlip(p=0.5))
+        
+        if param["DATASET"].get("VERTICAL_FLIP", False):
+            transforms_list.append(alb.VerticalFlip(p=0.5))
+        
+        if param["DATASET"].get("ROTATE_LIMIT", 0) > 0:
+            rotate_limit = param["DATASET"].get("ROTATE_LIMIT", 15)
+            transforms_list.append(alb.Rotate(limit=rotate_limit, p=0.5))
+        
+        if param["DATASET"].get("BRIGHTNESS_CONTRAST", False):
+            transforms_list.append(alb.RandomBrightnessContrast(
+                brightness_limit=0.2, contrast_limit=0.2, p=0.5
+            ))
+        
+        if param["DATASET"].get("BLUR", False):
+            transforms_list.append(alb.OneOf([
+                alb.MotionBlur(p=1),
+                alb.GaussianBlur(p=1),
+            ], p=0.3))
+        
+        if param["DATASET"].get("COLOR_JITTER", False):
+            transforms_list.append(alb.ColorJitter(
+                brightness=0.2, contrast=0.2, saturation=0.2, hue=0.1, p=0.5
+            ))
+    
+    # Always add normalization and tensor conversion
+    transforms_list.extend([
+        alb.Normalize(mean=(0.485, 0.456, 0.406), std=(0.229, 0.224, 0.225)),
+        alb.pytorch.transforms.ToTensorV2()
+    ])
+    
+    return alb.Compose(transforms_list)
 
 def getTransforms_val_test(param): 
     imgTransformsList = [alb.Resize(height = int(param["DATASET"]["RESIZE_SHAPE"].split("x")[0]), 
