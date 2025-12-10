@@ -153,15 +153,15 @@ class ASPP(nn.Module):
         self.bn1 = nn.BatchNorm2d(out_channels)
         
         self.conv2 = nn.Conv2d(in_channels, out_channels, 3, padding=dilation_rates[0], 
-                              dilation=dilation_rates[0], bias=False)
+                              dilation=dilation_rates[0], padding_mode='reflect', bias=False)
         self.bn2 = nn.BatchNorm2d(out_channels)
         
         self.conv3 = nn.Conv2d(in_channels, out_channels, 3, padding=dilation_rates[1], 
-                              dilation=dilation_rates[1], bias=False)
+                              dilation=dilation_rates[1], padding_mode='reflect', bias=False)
         self.bn3 = nn.BatchNorm2d(out_channels)
         
         self.conv4 = nn.Conv2d(in_channels, out_channels, 3, padding=dilation_rates[2], 
-                              dilation=dilation_rates[2], bias=False)
+                              dilation=dilation_rates[2], padding_mode='reflect', bias=False)
         self.bn4 = nn.BatchNorm2d(out_channels)
         
         self.global_avg_pool = nn.Sequential(
@@ -209,28 +209,28 @@ class ContextPredictionAutoencoder(nn.Module):
         
         # ENCODER (simplified backbone - 3 input channels for RGB)
         self.encoder1 = nn.Sequential(
-            nn.Conv2d(3, backbone_channels, 3, padding=1, bias=False),
+            nn.Conv2d(3, backbone_channels, 3, padding=1, padding_mode='reflect', bias=False),
             nn.BatchNorm2d(backbone_channels),
             nn.ReLU(),
-            nn.Conv2d(backbone_channels, backbone_channels, 3, padding=1, bias=False),
+            nn.Conv2d(backbone_channels, backbone_channels, 3, padding=1, padding_mode='reflect', bias=False),
             nn.BatchNorm2d(backbone_channels),
             nn.ReLU()
         )
         
         self.encoder2 = nn.Sequential(
-            nn.Conv2d(backbone_channels, backbone_channels*2, 3, stride=2, padding=1, bias=False),
+            nn.Conv2d(backbone_channels, backbone_channels*2, 3, stride=2, padding=1, padding_mode='reflect', bias=False),
             nn.BatchNorm2d(backbone_channels*2),
             nn.ReLU(),
-            nn.Conv2d(backbone_channels*2, backbone_channels*2, 3, padding=1, bias=False),
+            nn.Conv2d(backbone_channels*2, backbone_channels*2, 3, padding=1, padding_mode='reflect', bias=False),
             nn.BatchNorm2d(backbone_channels*2),
             nn.ReLU()
         )
         
         self.encoder3 = nn.Sequential(
-            nn.Conv2d(backbone_channels*2, backbone_channels*4, 3, stride=2, padding=1, bias=False),
+            nn.Conv2d(backbone_channels*2, backbone_channels*4, 3, stride=2, padding=1, padding_mode='reflect', bias=False),
             nn.BatchNorm2d(backbone_channels*4),
             nn.ReLU(),
-            nn.Conv2d(backbone_channels*4, backbone_channels*4, 3, padding=1, bias=False),
+            nn.Conv2d(backbone_channels*4, backbone_channels*4, 3, padding=1, padding_mode='reflect', bias=False),
             nn.BatchNorm2d(backbone_channels*4),
             nn.ReLU()
         )
@@ -246,10 +246,10 @@ class ContextPredictionAutoencoder(nn.Module):
         )
         
         self.decoder2 = nn.Sequential(
-            nn.Conv2d(backbone_channels*2 + backbone_channels*2, backbone_channels*2, 3, padding=1, bias=False),
+            nn.Conv2d(backbone_channels*2 + backbone_channels*2, backbone_channels*2, 3, padding=1, padding_mode='reflect', bias=False),
             nn.BatchNorm2d(backbone_channels*2),
             nn.ReLU(),
-            nn.Conv2d(backbone_channels*2, backbone_channels, 3, padding=1, bias=False),
+            nn.Conv2d(backbone_channels*2, backbone_channels, 3, padding=1, padding_mode='reflect', bias=False),
             nn.BatchNorm2d(backbone_channels),
             nn.ReLU()
         )
