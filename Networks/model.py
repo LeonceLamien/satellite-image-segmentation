@@ -68,13 +68,13 @@ class Network_Class:
         # -----------------------------------
         # NETWORK ARCHITECTURE INITIALISATION
         # -----------------------------------
-        self.model = ImprovedU_net(param).to(self.device)
+        self.model = DeepLabV3Plus(param).to(self.device)
 
         # -------------------
         # TRAINING PARAMETERS
         # -------------------
         self.criterion = nn.CrossEntropyLoss()  # ← AJOUTÉ: pour segmentation multi-classes
-        self.optimizer = torch.optim.SGD(self.model.parameters(), lr=self.lr)  # ← AJOUTÉ
+        self.optimizer = torch.optim.Adam(self.model.parameters(), lr=self.lr)  # ← AJOUTÉ
 
         # ----------------------------------------------------
         # DATASET INITIALISATION (from the dataLoader.py file)
