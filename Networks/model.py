@@ -30,6 +30,19 @@ def createFolder(desiredPath):
     if not os.path.exists(desiredPath):
         os.makedirs(desiredPath)
 
+class FocalLoss(nn.Module):
+    """Focal Loss pour gérer le déséquilibre des classes"""
+    def __init__(self, alpha=None, gamma=2.0):
+        super(FocalLoss, self).__init__()
+        self.alpha = alpha  # Poids des classes
+        self.gamma = gamma  # Paramètre de focalisation
+    
+    def forward(self, inputs, targets):
+        ce_loss = nn.CrossEntropyLoss(weight=self.alpha, reduction='none')(inputs, targets)
+        pt = torch.exp(-ce_loss)
+        focal_loss = ((1 - pt) ** self.gamma * ce_loss).mean()
+        return focal_loss
+
 ######################################################################################
 #
 # CLASS DESCRIBING THE INSTANTIATION, TRAINING AND EVALUATION OF THE MODEL 
@@ -63,6 +76,9 @@ class Network_Class:
         self.optimizer_name = param["TRAINING"].get("OPTIMIZER", "Adam")
         self.early_stopping = param["TRAINING"].get("EARLY_STOPPING", False)
         self.patience = param["TRAINING"].get("PATIENCE_EARLY_STOPPING", 10)
+        self.weight_decay = param["TRAINING"].get("WEIGHT_DECAY", 0.0)
+        self.loss_function = param["TRAINING"].get("LOSS_FUNCTION", "CrossEntropy")
+        self.use_scheduler = param["TRAINING"].get("LR_SCHEDULER", None)
 
         # -----------------------------------
         # NETWORK ARCHITECTURE INITIALISATION
@@ -79,15 +95,39 @@ class Network_Class:
         # -------------------
         # TRAINING PARAMETERS
         # -------------------
-        self.criterion = nn.CrossEntropyLoss()
+        # Loss function
+        if self.loss_function == "FocalLoss":
+            focal_gamma = param["TRAINING"].get("FOCAL_GAMMA", 2.0)
+            class_weights = param["TRAINING"].get("CLASS_WEIGHTS", None)
+            if class_weights:
+                class_weights = torch.tensor(class_weights, dtype=torch.float32).to(self.device)
+            self.criterion = FocalLoss(alpha=class_weights, gamma=focal_gamma)
+            print(f"Using Focal Loss (gamma={focal_gamma}, weights={class_weights})")
+        else:
+            class_weights = param["TRAINING"].get("CLASS_WEIGHTS", None)
+            if class_weights:
+                class_weights = torch.tensor(class_weights, dtype=torch.float32).to(self.device)
+            self.criterion = nn.CrossEntropyLoss(weight=class_weights)
+            print(f"Using CrossEntropy Loss (weights={class_weights})")
         
+        # Optimizer with weight decay
         if self.optimizer_name == "Adam":
-            self.optimizer = torch.optim.Adam(self.model.parameters(), lr=self.lr)
+            self.optimizer = torch.optim.Adam(self.model.parameters(), lr=self.lr, weight_decay=self.weight_decay)
         elif self.optimizer_name == "SDG":
-            self.optimizer = torch.optim.SGD(self.model.parameters(), lr=self.lr)
+            self.optimizer = torch.optim.SGD(self.model.parameters(), lr=self.lr, weight_decay=self.weight_decay)
         else:
             print(f"Unknown Optimizer {self.optimizer_name}")
             self.optimizer = None
+        
+        # Learning rate scheduler
+        self.scheduler = None
+        if self.use_scheduler == "ReduceLROnPlateau":
+            lr_patience = param["TRAINING"].get("LR_PATIENCE", 5)
+            lr_factor = param["TRAINING"].get("LR_FACTOR", 0.5)
+            self.scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
+                self.optimizer, mode='min', patience=lr_patience, factor=lr_factor, verbose=True
+            )
+            print(f"Using ReduceLROnPlateau scheduler (patience={lr_patience}, factor={lr_factor})")
 
         # ----------------------------------------------------
         # DATASET INITIALISATION (from the dataLoader.py file)
@@ -143,6 +183,10 @@ class Network_Class:
             # Validation phase
             val_loss = self.validate()
             self.val_losses.append(val_loss)
+            
+            # Update learning rate scheduler
+            if self.scheduler is not None:
+                self.scheduler.step(val_loss)
             
             print(f"Epoch [{epoch+1}/{self.epoch}] - Train Loss: {avg_train_loss:.4f} - Val Loss: {val_loss:.4f}")
             

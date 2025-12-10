@@ -1,0 +1,22 @@
+---
+# Config avec Focal Loss pour résoudre le problème de Class 1 (très déséquilibrée)
+DATASET:
+  RESIZE_SHAPE: 64x64
+
+MODEL:
+  ARCHITECTURE: DeepLabV3Plus
+  BACKBONE_CHANNELS: 64
+  DILATION_RATES: [6, 12, 18]
+  ASPP_DROPOUT: 0.3  # Réduit pour éviter l'overfitting
+  
+TRAINING: 
+  OPTIMIZER: Adam
+  LEARNING_RATE: 0.001
+  EPOCH: 100
+  BATCH_SIZE: 16
+  DEVICE: cuda
+  EARLY_STOPPING: true
+  PATIENCE_EARLY_STOPPING: 10
+  LOSS_FUNCTION: FocalLoss  # Pour gérer le déséquilibre des classes
+  FOCAL_GAMMA: 2.5  # Focalise sur les exemples difficiles
+  CLASS_WEIGHTS: [1.0, 5.0, 1.5, 2.0, 1.0]  # Boost Class 1 et 3
