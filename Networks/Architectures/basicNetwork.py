@@ -23,8 +23,6 @@ class Net(nn.Module):
         x = self.conv3(x)
         return x
 
-
-
 class ImprovedU_net(nn.Module):
     def __init__(self, param):
         super().__init__()
@@ -123,7 +121,6 @@ class ImprovedU_net(nn.Module):
         out = self.out_conv(d1)
         
         return out
-
 
 class AttentionBlock(nn.Module):
     def __init__(self, F_g, F_l):

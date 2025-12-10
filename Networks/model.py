@@ -2,27 +2,23 @@ from Dataset.dataLoader import *
 from Dataset.makeGraph import *
 from Networks.Architectures.basicNetwork import *
 from Networks.Architectures.deepLab import *
-from sklearn.metrics import confusion_matrix
 import matplotlib.pyplot as plt
 import seaborn as sns
+from sklearn.metrics import roc_auc_score, roc_curve, auc, confusion_matrix, accuracy_score, precision_score, recall_score, f1_score, jaccard_score
+from sklearn.preprocessing import label_binarize
         
 import numpy as np
 np.random.seed(2885)
 import os
 import copy
-from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score, jaccard_score
-from sklearn.metrics import roc_auc_score, roc_curve, auc
-from sklearn.preprocessing import label_binarize
 import matplotlib.pyplot as plt
 import seaborn as sns
         
 import torch
 torch.manual_seed(2885)
 from torch.utils.data import DataLoader
-from torch.utils.data import random_split
 import torch.nn as nn
 import torch.optim
-
 
 # --------------------------------------------------------------------------------
 # CREATE A FOLDER IF IT DOES NOT EXIST
@@ -32,7 +28,6 @@ import torch.optim
 def createFolder(desiredPath): 
     if not os.path.exists(desiredPath):
         os.makedirs(desiredPath)
-
 
 ######################################################################################
 #
@@ -73,8 +68,8 @@ class Network_Class:
         # -------------------
         # TRAINING PARAMETERS
         # -------------------
-        self.criterion = nn.CrossEntropyLoss()  # ← AJOUTÉ: pour segmentation multi-classes
-        self.optimizer = torch.optim.SGD(self.model.parameters(), lr=self.lr)  # ← AJOUTÉ
+        self.criterion = nn.CrossEntropyLoss()
+        self.optimizer = torch.optim.SGD(self.model.parameters(), lr=self.lr)
 
         # ----------------------------------------------------
         # DATASET INITIALISATION (from the dataLoader.py file)
@@ -97,7 +92,7 @@ class Network_Class:
         self.model.load_state_dict(torch.load(self.resultsPath + '/_Weights/wghts.pkl', weights_only=True))
 
     # -----------------------------------
-    # TRAINING LOOP (implémentation réelle)
+    # TRAINING LOOP
     # -----------------------------------
     def train(self): 
         best_loss = float('inf')
@@ -108,7 +103,7 @@ class Network_Class:
             self.model.train()
             running_loss = 0.0
             
-            for batch_idx, (images, masks, _, _) in enumerate(self.trainDataLoader):
+            for _, (images, masks, _, _) in enumerate(self.trainDataLoader):
                 images = images.to(self.device)
                 masks = masks.to(self.device).long()  
                 
@@ -162,9 +157,7 @@ class Network_Class:
         return running_val_loss / len(self.valDataLoader)
 
     def plot_learning_curves(self):
-        """Plot and save learning curves"""
-        import matplotlib.pyplot as plt
-        
+        """Plot and save learning curves"""        
         plt.figure(figsize=(10, 6))
         plt.plot(self.train_losses, label='Training Loss')
         plt.plot(self.val_losses, label='Validation Loss')
@@ -177,12 +170,14 @@ class Network_Class:
         curves_path = os.path.join(self.resultsPath, "learning_curves.png")
         plt.savefig(curves_path)
         plt.close()
-        print(f"📊 Learning curves saved to {curves_path}")
+        print(f"Learning curves saved to {curves_path}")
 
     # -------------------------------------------------
     # EVALUATION PROCEDURE 
     # -------------------------------------------------
     def evaluate(self):
+        createFolder(self.resultsPath)
+
         self.model.eval()
         
         allMasks, allMasksPreds, allTileNames, allResizedImgs = [], [], [], []
@@ -216,19 +211,13 @@ class Network_Class:
         savePath = os.path.join(self.resultsPath, "Test")
         createFolder(savePath)
         reconstruct_from_tiles(allResizedImgs, allMasksPreds, allMasks, allTileNames, savePath)
-
+ 
         # Quantitative Evaluation
         self.quantitative_evaluation(allMasks, allMasksPreds, allOutputs)  
 
         
     def quantitative_evaluation(self, true_masks, pred_masks, outputs=None):
-        """Calculate quantitative metrics including ROC AUC and Confusion Matrix"""
-        from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score, jaccard_score
-        from sklearn.metrics import roc_auc_score, roc_curve, auc, confusion_matrix
-        from sklearn.preprocessing import label_binarize
-        import matplotlib.pyplot as plt
-        import seaborn as sns
-        
+        """Calculate quantitative metrics including ROC AUC and Confusion Matrix"""        
         # Flatten arrays for metric calculation
         true_flat = true_masks.flatten()
         pred_flat = pred_masks.flatten()
@@ -250,12 +239,14 @@ class Network_Class:
         # Calculate and plot confusion matrix
         self.plot_confusion_matrix(true_flat, pred_flat)
         
+        self.plot_normalized_confusion_matrix(true_flat, pred_flat)
+        
         # Calculate per-class metrics
         self.calculate_per_class_metrics(true_flat, pred_flat)
         
         # ROC AUC Calculation
         if outputs is not None:
-            print("\n📊 Calculating ROC AUC...")
+            print("\nCalculating ROC AUC...")
             
             # Reshape outputs and true masks for ROC calculation
             # outputs shape: [N, 5, H, W] -> [N*H*W, 5]
@@ -327,12 +318,36 @@ class Network_Class:
         
         print(f" Metrics saved to {metrics_path}")
 
+    def calculate_per_class_metrics(self, true_labels, pred_labels, class_names=None):
+        """Calculate and display per-class metrics"""
+        if class_names is None:
+            class_names = [f'Class {i}' for i in range(5)]
+        
+        # Calculate per-class metrics
+        precision_per_class = precision_score(true_labels, pred_labels, average=None, zero_division=0)
+        recall_per_class = recall_score(true_labels, pred_labels, average=None, zero_division=0)
+        f1_per_class = f1_score(true_labels, pred_labels, average=None, zero_division=0)
+        iou_per_class = jaccard_score(true_labels, pred_labels, average=None, zero_division=0)
+        
+        print("\n🎯 Per-Class Metrics:")
+        print(f"{'Class':<10} {'Precision':<10} {'Recall':<10} {'F1-Score':<10} {'IoU':<10}")
+        print("-" * 50)
+        for i in range(len(class_names)):
+            print(f"{class_names[i]:<10} {precision_per_class[i]:<10.4f} {recall_per_class[i]:<10.4f} {f1_per_class[i]:<10.4f} {iou_per_class[i]:<10.4f}")
+        
+        # Save per-class metrics to file
+        metrics_path = os.path.join(self.resultsPath, "per_class_metrics.txt")
+        with open(metrics_path, 'w') as f:
+            f.write("Per-Class Metrics:\n")
+            f.write(f"{'Class':<10} {'Precision':<10} {'Recall':<10} {'F1-Score':<10} {'IoU':<10}\n")
+            f.write("-" * 50 + "\n")
+            for i in range(len(class_names)):
+                f.write(f"{class_names[i]:<10} {precision_per_class[i]:<10.4f} {recall_per_class[i]:<10.4f} {f1_per_class[i]:<10.4f} {iou_per_class[i]:<10.4f}\n")
+        
+        print(f"Per-class metrics saved to {metrics_path}")
+
     def plot_confusion_matrix(self, true_labels, pred_labels, class_names=None):
         """Plot and save confusion matrix"""
-        from sklearn.metrics import confusion_matrix
-        import matplotlib.pyplot as plt
-        import seaborn as sns
-        
         if class_names is None:
             class_names = [f'Class {i}' for i in range(5)]
         
@@ -361,38 +376,8 @@ class Network_Class:
         plt.savefig(cm_path, dpi=300, bbox_inches='tight')
         plt.close()
         
-        print(f"📊 Confusion matrix saved to {cm_path}")
-
-    def calculate_per_class_metrics(self, true_labels, pred_labels, class_names=None):
-        """Calculate and display per-class metrics"""
-        from sklearn.metrics import precision_score, recall_score, f1_score, jaccard_score
+        print(f"Confusion matrix saved to {cm_path}")
         
-        if class_names is None:
-            class_names = [f'Class {i}' for i in range(5)]
-        
-        # Calculate per-class metrics
-        precision_per_class = precision_score(true_labels, pred_labels, average=None, zero_division=0)
-        recall_per_class = recall_score(true_labels, pred_labels, average=None, zero_division=0)
-        f1_per_class = f1_score(true_labels, pred_labels, average=None, zero_division=0)
-        iou_per_class = jaccard_score(true_labels, pred_labels, average=None, zero_division=0)
-        
-        print("\n🎯 Per-Class Metrics:")
-        print(f"{'Class':<10} {'Precision':<10} {'Recall':<10} {'F1-Score':<10} {'IoU':<10}")
-        print("-" * 50)
-        for i in range(len(class_names)):
-            print(f"{class_names[i]:<10} {precision_per_class[i]:<10.4f} {recall_per_class[i]:<10.4f} {f1_per_class[i]:<10.4f} {iou_per_class[i]:<10.4f}")
-        
-        # Save per-class metrics to file
-        metrics_path = os.path.join(self.resultsPath, "per_class_metrics.txt")
-        with open(metrics_path, 'w') as f:
-            f.write("Per-Class Metrics:\n")
-            f.write(f"{'Class':<10} {'Precision':<10} {'Recall':<10} {'F1-Score':<10} {'IoU':<10}\n")
-            f.write("-" * 50 + "\n")
-            for i in range(len(class_names)):
-                f.write(f"{class_names[i]:<10} {precision_per_class[i]:<10.4f} {recall_per_class[i]:<10.4f} {f1_per_class[i]:<10.4f} {iou_per_class[i]:<10.4f}\n")
-        
-        print(f"Per-class metrics saved to {metrics_path}")
-
     def plot_normalized_confusion_matrix(self, true_labels, pred_labels, class_names=None):
         """Plot normalized confusion matrix (optional)"""
         
@@ -425,14 +410,11 @@ class Network_Class:
         plt.savefig(cm_norm_path, dpi=300, bbox_inches='tight')
         plt.close()
         
-        print(f"📊 Normalized confusion matrix saved to {cm_norm_path}")
+        print(f"Normalized confusion matrix saved to {cm_norm_path}")
         
     
     def plot_roc_curves(self, fpr, tpr, roc_auc, n_classes):
-        """Plot ROC curves for all classes"""
-        import matplotlib.pyplot as plt
-        import seaborn as sns
-        
+        """Plot ROC curves for all classes"""        
         # Set style
         plt.style.use('default')
         sns.set_palette("husl")
@@ -482,39 +464,4 @@ class Network_Class:
         plt.savefig(roc_path, dpi=300, bbox_inches='tight')
         plt.close()
         
-        print(f"📊 ROC curves saved to {roc_path}")
-
-    def calculate_validation_roc_auc(self):
-        """Calculate ROC AUC on validation set"""
-        self.model.eval()
-        all_outputs = []
-        all_targets = []
-        
-        with torch.no_grad():
-            for images, masks, _, _ in self.valDataLoader:
-                images = images.to(self.device)
-                masks = masks.to(self.device)
-                
-                outputs = self.model(images)
-                
-                all_outputs.append(outputs.cpu().numpy())
-                all_targets.append(masks.cpu().numpy())
-        
-        all_outputs = np.concatenate(all_outputs)
-        all_targets = np.concatenate(all_targets)
-        
-        # Reshape for ROC calculation
-        outputs_flat = all_outputs.transpose(0, 2, 3, 1).reshape(-1, 5)
-        targets_flat = all_targets.flatten()
-        
-        # Binarize targets
-        from sklearn.preprocessing import label_binarize
-        targets_binary = label_binarize(targets_flat, classes=range(5))
-        
-        # Calculate micro-average AUC
-        from sklearn.metrics import roc_auc_score
-        try:
-            micro_auc = roc_auc_score(targets_binary, outputs_flat, average='micro')
-            return micro_auc
-        except ValueError:
-            return 0.0
+        print(f"ROC curves saved to {roc_path}")

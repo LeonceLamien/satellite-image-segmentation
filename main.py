@@ -8,7 +8,6 @@ import os
 from os.path import dirname, abspath
 from termcolor import colored
 
-
 rootDirectory    = dirname(abspath(__file__))
 datasetDirectory = os.path.join(rootDirectory,    "Dataset")
 imgDirectory     = os.path.join(datasetDirectory, "images")
@@ -16,7 +15,6 @@ maskDirectory    = os.path.join(datasetDirectory, "annotations")
 
 parser = argparse.ArgumentParser()
 parser.add_argument('-exp', type=str, default='DefaultExp')
-
 
 ######################################################################################
 #
@@ -48,7 +46,7 @@ def main(parser):
     # 2. VISUALISATION OF THE DATASET (OPTIONAL)
     # ------------------------------------------
     # Comment line below to skip the visualisation
-    showDataset(myNetwork.dataSetTrain, param)
+    # showDataset(myNetwork.dataSetTrain, param)
 
     # ------------------
     # 3. TRAIN THE MODEL  
@@ -67,4 +65,3 @@ def main(parser):
 if __name__ == '__main__':
     parser = parser.parse_args()
     main(parser)
-
