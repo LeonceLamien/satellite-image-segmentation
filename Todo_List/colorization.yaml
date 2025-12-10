@@ -7,7 +7,7 @@ TASK:
   # No additional task-specific parameters
 
 MODEL:
-  BASE_CHANNELS: 128
+  BASE_CHANNELS: 64
   DROPOUT: 0.1
   DILATION_RATES: [6, 12, 18]
 
