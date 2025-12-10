@@ -267,7 +267,7 @@ class FeatureClusterer:
         print("=" * 70)
         
         # Load datasets
-        img_dir = "../Dataset/images"
+        img_dir = "./Dataset/images"
         
         if self.task_name == "denoising":
             train_dataset = DenoisingDataset(img_dir, "train", self.param, 

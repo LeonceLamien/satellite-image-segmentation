@@ -339,7 +339,7 @@ def main():
         return
     
     # Load ground truth
-    mask_dir = "../Dataset/annotations"
+    mask_dir = "./Dataset/annotations"
     full_gt_mask = load_ground_truth_mask(mask_dir, tile_names, coords, target_size)
     
     # Analyze correspondence

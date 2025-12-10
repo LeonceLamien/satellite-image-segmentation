@@ -79,6 +79,8 @@ class ColorizationDataset(Dataset):
         
         # Load and resize image
         image = cv2.imread(filepath)
+        if image is None:
+            raise FileNotFoundError(f"Cannot load image: {filepath}")
         image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
         image = cv2.resize(image, (self.resize_w, self.resize_h))
         

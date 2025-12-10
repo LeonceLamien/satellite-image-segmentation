@@ -80,7 +80,7 @@ class SSLTrainer:
     
     def _init_datasets(self):
         """Initialize datasets based on task."""
-        img_dir = "../Dataset/images"
+        img_dir = "./Dataset/images"
         
         if self.task_name == "denoising":
             noise_std = self.param["TASK"].get("NOISE_STD", 0.1)
