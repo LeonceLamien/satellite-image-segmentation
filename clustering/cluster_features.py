@@ -76,7 +76,14 @@ class FeatureClusterer:
         
         # If config not saved, try to find it in configs/
         if not os.path.exists(config_path):
-            config_path = f"configs/{self.task_name}.yaml"
+            # Handle task name mapping
+            task_config_map = {
+                'denoising': 'denoising.yaml',
+                'colorization': 'colorization.yaml',
+                'context_prediction': 'context_pred.yaml'  # Fix: use context_pred not context_prediction
+            }
+            config_file = task_config_map.get(self.task_name, f"{self.task_name}.yaml")
+            config_path = f"configs/{config_file}"
         
         with open(config_path, 'r') as f:
             self.param = yaml.safe_load(f)
