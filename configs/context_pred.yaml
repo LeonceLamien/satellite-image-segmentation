@@ -1,0 +1,19 @@
+# Configuration for Context Prediction Proxy Task
+
+DATASET:
+  RESIZE_SHAPE: "64x64"
+
+TASK:
+  MASK_RATIO: 0.3  # Proportion of image to mask (30%)
+  PATCH_SIZE: 8     # Size of masked patches (8x8)
+  MASKED_ONLY_LOSS: false  # If true, compute loss only on masked regions
+
+MODEL:
+  BASE_CHANNELS: 64
+  DROPOUT: 0.1
+
+TRAIN:
+  NUM_EPOCHS: 50
+  BATCH_SIZE: 32
+  LEARNING_RATE: 0.001
+  USE_SCHEDULER: true
