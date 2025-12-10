@@ -61,6 +61,8 @@ class Network_Class:
         self.lr            = param["TRAINING"]["LEARNING_RATE"]
         self.batchSize     = param["TRAINING"]["BATCH_SIZE"]
         self.optimizer_name = param["TRAINING"].get("OPTIMIZER", "Adam")
+        self.early_stopping = param["TRAINING"].get("EARLY_STOPPING", False)
+        self.patience = param["TRAINING"].get("PATIENCE_EARLY_STOPPING", 10)
 
         # -----------------------------------
         # NETWORK ARCHITECTURE INITIALISATION
@@ -112,6 +114,7 @@ class Network_Class:
     # -----------------------------------
     def train(self): 
         best_loss = float('inf')
+        patience_counter = 0
         
         # train for a given number of epochs
         for epoch in range(self.epoch):
@@ -146,6 +149,15 @@ class Network_Class:
             if val_loss < best_loss:
                 best_loss = val_loss
                 modelWts = copy.deepcopy(self.model.state_dict())
+                patience_counter = 0
+            else:
+                patience_counter += 1
+                
+            # Early stopping check
+            if self.early_stopping and patience_counter >= self.patience:
+                print(f"\nEarly stopping triggered after {epoch+1} epochs (patience: {self.patience})")
+                print(f"Best validation loss: {best_loss:.4f}")
+                break
         
         # Print learning curves
         self.plot_learning_curves()
