@@ -3,7 +3,6 @@ import albumentations as alb
 import cv2
 import os
 import copy
-import numpy as np
 import json
 from torch.utils.data import Dataset
 
@@ -79,8 +78,6 @@ class LLNDataset(Dataset):
 # INPUTS: 
 #     - param (dic): dictionnary containing the parameters defined in the 
 #                    configuration (yaml) file
-#
-# Do not hesitate to consider other useful transforms!
 # -----------------------------------------------------------------------
 def getTransforms_train(param): 
     transforms_list = [
@@ -88,32 +85,40 @@ def getTransforms_train(param):
                    width=int(param["DATASET"]["RESIZE_SHAPE"].split("x")[1]))
     ]
     
+    force_augmentation = param["DATASET"].get("FORCE_AUGMENTATION", False)
+    prob = 1.0 if force_augmentation else 0.5
+    
     # Add augmentations if enabled
     if param["DATASET"].get("USE_AUGMENTATION", False):
         if param["DATASET"].get("HORIZONTAL_FLIP", False):
-            transforms_list.append(alb.HorizontalFlip(p=0.5))
+            transforms_list.append(alb.HorizontalFlip(p=prob))
         
         if param["DATASET"].get("VERTICAL_FLIP", False):
-            transforms_list.append(alb.VerticalFlip(p=0.5))
+            transforms_list.append(alb.VerticalFlip(p=prob))
         
         if param["DATASET"].get("ROTATE_LIMIT", 0) > 0:
             rotate_limit = param["DATASET"].get("ROTATE_LIMIT", 15)
-            transforms_list.append(alb.Rotate(limit=rotate_limit, p=0.5))
+            transforms_list.append(alb.Rotate(
+                limit=rotate_limit, 
+                p=prob, 
+                border_mode=cv2.BORDER_REFLECT_101
+            ))
         
         if param["DATASET"].get("BRIGHTNESS_CONTRAST", False):
             transforms_list.append(alb.RandomBrightnessContrast(
-                brightness_limit=0.2, contrast_limit=0.2, p=0.5
+                brightness_limit=0.2, contrast_limit=0.2, p=prob
             ))
         
         if param["DATASET"].get("BLUR", False):
+            blur_prob = 0.5 if force_augmentation else 0.3
             transforms_list.append(alb.OneOf([
-                alb.MotionBlur(p=1),
-                alb.GaussianBlur(p=1),
-            ], p=0.3))
+                alb.MotionBlur(blur_limit=3, p=1),
+                alb.GaussianBlur(blur_limit=3, p=1),
+            ], p=blur_prob))
         
         if param["DATASET"].get("COLOR_JITTER", False):
             transforms_list.append(alb.ColorJitter(
-                brightness=0.2, contrast=0.2, saturation=0.2, hue=0.1, p=0.5
+                brightness=0.2, contrast=0.2, saturation=0.2, hue=0.1, p=prob
             ))
     
     # Always add normalization and tensor conversion
