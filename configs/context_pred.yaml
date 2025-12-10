@@ -4,9 +4,9 @@ DATASET:
   RESIZE_SHAPE: "64x64"
 
 TASK:
-  MASK_RATIO: 0.35  # Optimal masking: challenging but learnable
+  MASK_RATIO: 0.3  # 30% masked (not too much)
   PATCH_SIZE: 8     # Size of masked patches (8x8)
-  MASKED_ONLY_LOSS: true  # Focus loss on masked regions for better features
+  MASKED_ONLY_LOSS: false  # Compute loss on full image for better learning
 
 MODEL:
   BASE_CHANNELS: 64

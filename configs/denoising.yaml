@@ -4,18 +4,16 @@ DATASET:
   RESIZE_SHAPE: "64x64"
 
 TASK:
-  NOISE_STD: 0.12  # Optimal noise level: challenging but not overwhelming
+  NOISE_STD: 0.1  # Standard Gaussian noise level (optimal balance)
 
 MODEL:
   BASE_CHANNELS: 64
-  DROPOUT: 0.15  # More dropout for better generalization
+  DROPOUT: 0.2  # More dropout for better generalization
 
 TRAIN:
   NUM_EPOCHS: 50  # More epochs for better convergence
-  BATCH_SIZE: 32
-  LEARNING_RATE: 0.001
+  BATCH_SIZE: 16
+  LEARNING_RATE: 0.0001
   WEIGHT_DECAY: 0.0001  # L2 regularization for better features
-  USE_SCHEDULER: true
-  # Early stopping
   EARLY_STOP_PATIENCE: 10  # Stop if no improvement for 10 epochs
   EARLY_STOP_MIN_DELTA: 0.0001  # Minimum change to count as improvement

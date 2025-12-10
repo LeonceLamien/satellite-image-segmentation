@@ -262,8 +262,8 @@ class ContextPredictionAutoencoder(nn.Module):
 
 def context_prediction_loss(pred, target, mask=None, masked_only=False):
     """
-    Enhanced loss function for context prediction task.
-    Can focus on masked regions and adds edge-aware component.
+    Loss function for context prediction task.
+    Simple MSE on full image or masked regions.
     
     Args:
         pred: Predicted image (B, 3, H, W)
@@ -279,34 +279,10 @@ def context_prediction_loss(pred, target, mask=None, masked_only=False):
         mask_3ch = mask.expand_as(pred)  # Broadcast to 3 channels
         masked_pred = pred * mask_3ch
         masked_target = target * mask_3ch
-        mse_loss = F.mse_loss(masked_pred, masked_target)
-        
-        # Add edge loss for boundary awareness
-        def compute_edges(img):
-            gx = torch.abs(img[:, :, :, 1:] - img[:, :, :, :-1])
-            gy = torch.abs(img[:, :, 1:, :] - img[:, :, :-1, :])
-            return gx, gy
-        
-        pred_gx, pred_gy = compute_edges(pred)
-        target_gx, target_gy = compute_edges(target)
-        edge_loss = F.l1_loss(pred_gx, target_gx) + F.l1_loss(pred_gy, target_gy)
-        
-        loss = mse_loss + 0.2 * edge_loss
+        loss = F.mse_loss(masked_pred, masked_target)
     else:
-        # Compute loss on full image with edge component
-        mse_loss = F.mse_loss(pred, target)
-        
-        # Add edge awareness
-        def compute_edges(img):
-            gx = torch.abs(img[:, :, :, 1:] - img[:, :, :, :-1])
-            gy = torch.abs(img[:, :, 1:, :] - img[:, :, :-1, :])
-            return gx, gy
-        
-        pred_gx, pred_gy = compute_edges(pred)
-        target_gx, target_gy = compute_edges(target)
-        edge_loss = F.l1_loss(pred_gx, target_gx) + F.l1_loss(pred_gy, target_gy)
-        
-        loss = mse_loss + 0.1 * edge_loss
+        # Compute loss on full image (recommended)
+        loss = F.mse_loss(pred, target)
     
     return loss
 
