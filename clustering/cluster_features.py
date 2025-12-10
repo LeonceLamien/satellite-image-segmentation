@@ -72,16 +72,16 @@ class FeatureClusterer:
         """Load configuration from experiment directory."""
         config_path = f"{self.exp_dir}/config.yaml"
         
-        # If config not saved, try to find it in configs/
+        # If config not saved, try to find it in Todo_List/
         if not os.path.exists(config_path):
             # Handle task name mapping
             task_config_map = {
                 'denoising': 'denoising.yaml',
                 'colorization': 'colorization.yaml',
-                'context_prediction': 'context_pred.yaml'  # Fix: use context_pred not context_prediction
+                'context_prediction': 'context_pred.yaml'
             }
             config_file = task_config_map.get(self.task_name, f"{self.task_name}.yaml")
-            config_path = f"configs/{config_file}"
+            config_path = f"Todo_List/{config_file}"
         
         with open(config_path, 'r') as f:
             self.param = yaml.safe_load(f)
@@ -116,10 +116,10 @@ class FeatureClusterer:
         """Initialize KMeans clustering with optimal parameters."""
         self.clusterer = KMeans(
             n_clusters=self.n_clusters,
-            random_state=42,  # Pour reproductibilité
-            n_init=20,  # Plus d'initialisations pour meilleur résultat
-            max_iter=500,  # Plus d'itérations pour convergence
-            tol=1e-5  # Seuil de convergence strict
+            random_state=42,
+            n_init=20,
+            max_iter=500,
+            tol=1e-5
         )
         
         print(f"✓ Clustering: KMeans with {self.n_clusters} clusters")

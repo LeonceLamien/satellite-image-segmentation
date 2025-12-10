@@ -94,20 +94,20 @@ class ContextPredictionDataset(Dataset):
     def apply_mask(self, image, mask):
         """
         Apply mask to image.
-        Masked regions are filled with gray (0.5) to distinguish from content.
+        Masked regions are filled with BLACK (0.0) to force reconstruction.
         
         Args:
             image: RGB image (H, W, 3) in [0, 1]
             mask: Binary mask (H, W)
         
         Returns:
-            masked_image: Image with masked regions filled with gray
+            masked_image: Image with masked regions set to black
         """
         masked_image = image.copy()
         mask_3ch = mask[:, :, np.newaxis]  # Broadcast to 3 channels
         
-        # Fill masked regions with gray (0.5)
-        masked_image = masked_image * (1 - mask_3ch) + 0.5 * mask_3ch
+        # Fill masked regions with BLACK (0.0) - forces model to reconstruct
+        masked_image = masked_image * (1 - mask_3ch)
         
         return masked_image
     
@@ -263,7 +263,6 @@ class ContextPredictionAutoencoder(nn.Module):
 def context_prediction_loss(pred, target, mask=None, masked_only=False):
     """
     Loss function for context prediction task.
-    Simple MSE on full image or masked regions.
     
     Args:
         pred: Predicted image (B, 3, H, W)
@@ -276,12 +275,17 @@ def context_prediction_loss(pred, target, mask=None, masked_only=False):
     """
     if masked_only and mask is not None:
         # Compute loss only on masked regions
-        mask_3ch = mask.expand_as(pred)  # Broadcast to 3 channels
-        masked_pred = pred * mask_3ch
-        masked_target = target * mask_3ch
-        loss = F.mse_loss(masked_pred, masked_target)
+        mask_3ch = mask.expand_as(pred)  # Broadcast to 3 channels (B, 3, H, W)
+        
+        # Compute MSE only on masked pixels
+        diff = (pred - target) ** 2
+        masked_diff = diff * mask_3ch
+        
+        # Normalize by number of masked pixels (not total pixels)
+        num_masked = mask_3ch.sum() + 1e-8  # Avoid division by zero
+        loss = masked_diff.sum() / num_masked
     else:
-        # Compute loss on full image (recommended)
+        # Compute loss on full image
         loss = F.mse_loss(pred, target)
     
     return loss
