@@ -183,6 +183,7 @@ class Network_Class:
         plt.legend()
         plt.grid(True)
         
+        createFolder(self.resultsPath)
         curves_path = os.path.join(self.resultsPath, "learning_curves.png")
         plt.savefig(curves_path)
         plt.close()
