@@ -97,9 +97,57 @@ class ColorizationDataset(Dataset):
         return gray_tensor, rgb_tensor, tile_name
 
 
+class ASPP(nn.Module):
+    """Atrous Spatial Pyramid Pooling for multi-scale feature extraction"""
+    def __init__(self, in_channels, out_channels=256, dilation_rates=[6, 12, 18], dropout=0.5):
+        super(ASPP, self).__init__()
+        
+        self.conv1 = nn.Conv2d(in_channels, out_channels, 1, bias=False)
+        self.bn1 = nn.BatchNorm2d(out_channels)
+        
+        self.conv2 = nn.Conv2d(in_channels, out_channels, 3, padding=dilation_rates[0], 
+                              dilation=dilation_rates[0], bias=False)
+        self.bn2 = nn.BatchNorm2d(out_channels)
+        
+        self.conv3 = nn.Conv2d(in_channels, out_channels, 3, padding=dilation_rates[1], 
+                              dilation=dilation_rates[1], bias=False)
+        self.bn3 = nn.BatchNorm2d(out_channels)
+        
+        self.conv4 = nn.Conv2d(in_channels, out_channels, 3, padding=dilation_rates[2], 
+                              dilation=dilation_rates[2], bias=False)
+        self.bn4 = nn.BatchNorm2d(out_channels)
+        
+        self.global_avg_pool = nn.Sequential(
+            nn.AdaptiveAvgPool2d(1),
+            nn.Conv2d(in_channels, out_channels, 1, bias=False),
+            nn.BatchNorm2d(out_channels),
+            nn.ReLU()
+        )
+        
+        self.conv5 = nn.Conv2d(out_channels * 5, out_channels, 1, bias=False)
+        self.bn5 = nn.BatchNorm2d(out_channels)
+        self.dropout = nn.Dropout(dropout)
+
+    def forward(self, x):
+        x1 = F.relu(self.bn1(self.conv1(x)))
+        x2 = F.relu(self.bn2(self.conv2(x)))
+        x3 = F.relu(self.bn3(self.conv3(x)))
+        x4 = F.relu(self.bn4(self.conv4(x)))
+        
+        x5 = self.global_avg_pool(x)
+        x5 = F.interpolate(x5, size=x4.size()[2:], mode='bilinear', align_corners=True)
+        
+        x = torch.cat((x1, x2, x3, x4, x5), dim=1)
+        x = F.relu(self.bn5(self.conv5(x)))
+        x = self.dropout(x)
+        
+        return x
+
+
 class ColorizationAutoencoder(nn.Module):
     """
-    Encoder-Decoder architecture for colorization task.
+    DeepLabV3+ architecture adapted for colorization task.
+    Uses ASPP for multi-scale feature extraction.
     
     Input: Grayscale image (1 channel)
     Output: RGB image (3 channels)
@@ -108,109 +156,112 @@ class ColorizationAutoencoder(nn.Module):
     def __init__(self, param):
         super(ColorizationAutoencoder, self).__init__()
         
-        in_channels = 1  # Grayscale input
-        out_channels = 3  # RGB output
-        base_channels = param["MODEL"].get("BASE_CHANNELS", 64)
-        dropout = param["MODEL"].get("DROPOUT", 0.1)
+        backbone_channels = param["MODEL"].get("BASE_CHANNELS", 64)
+        dilation_rates = param["MODEL"].get("DILATION_RATES", [6, 12, 18])
+        aspp_dropout = param["MODEL"].get("DROPOUT", 0.2)
         
-        # ENCODER: Extracts features from grayscale images
-        self.enc1 = self._conv_block(in_channels, base_channels, dropout, padding_mode='reflect')
-        self.enc2 = self._conv_block(base_channels, base_channels*2, dropout, padding_mode='reflect')
-        self.enc3 = self._conv_block(base_channels*2, base_channels*4, dropout, padding_mode='reflect')
-        self.enc4 = self._conv_block(base_channels*4, base_channels*8, dropout, padding_mode='reflect')
+        # ENCODER (simplified backbone - 1 input channel for grayscale)
+        self.encoder1 = nn.Sequential(
+            nn.Conv2d(1, backbone_channels, 3, padding=1, bias=False),
+            nn.BatchNorm2d(backbone_channels),
+            nn.ReLU(),
+            nn.Conv2d(backbone_channels, backbone_channels, 3, padding=1, bias=False),
+            nn.BatchNorm2d(backbone_channels),
+            nn.ReLU()
+        )
         
-        # BOTTLENECK
-        self.bottleneck = self._conv_block(base_channels*8, base_channels*16, dropout, padding_mode='reflect')
+        self.encoder2 = nn.Sequential(
+            nn.Conv2d(backbone_channels, backbone_channels*2, 3, stride=2, padding=1, bias=False),
+            nn.BatchNorm2d(backbone_channels*2),
+            nn.ReLU(),
+            nn.Conv2d(backbone_channels*2, backbone_channels*2, 3, padding=1, bias=False),
+            nn.BatchNorm2d(backbone_channels*2),
+            nn.ReLU()
+        )
         
-        # DECODER: Predicts RGB colors
-        self.dec4 = self._upconv_block(base_channels*16, base_channels*8, dropout, padding_mode='reflect')
-        self.dec3 = self._upconv_block(base_channels*16, base_channels*4, dropout, padding_mode='reflect')
-        self.dec2 = self._upconv_block(base_channels*8, base_channels*2, dropout, padding_mode='reflect')
-        self.dec1 = self._upconv_block(base_channels*4, base_channels, dropout, padding_mode='reflect')
+        self.encoder3 = nn.Sequential(
+            nn.Conv2d(backbone_channels*2, backbone_channels*4, 3, stride=2, padding=1, bias=False),
+            nn.BatchNorm2d(backbone_channels*4),
+            nn.ReLU(),
+            nn.Conv2d(backbone_channels*4, backbone_channels*4, 3, padding=1, bias=False),
+            nn.BatchNorm2d(backbone_channels*4),
+            nn.ReLU()
+        )
         
-        # FINAL OUTPUT: Predict RGB colors
-        self.final = nn.Sequential(
-            nn.Conv2d(base_channels*2, out_channels, kernel_size=1, padding=0),
+        # ASPP module for multi-scale features
+        self.aspp = ASPP(backbone_channels*4, backbone_channels*4, dilation_rates, aspp_dropout)
+        
+        # DECODER
+        self.decoder1 = nn.Sequential(
+            nn.Conv2d(backbone_channels*4, backbone_channels*2, 1, bias=False),
+            nn.BatchNorm2d(backbone_channels*2),
+            nn.ReLU()
+        )
+        
+        self.decoder2 = nn.Sequential(
+            nn.Conv2d(backbone_channels*2 + backbone_channels*2, backbone_channels*2, 3, padding=1, bias=False),
+            nn.BatchNorm2d(backbone_channels*2),
+            nn.ReLU(),
+            nn.Conv2d(backbone_channels*2, backbone_channels, 3, padding=1, bias=False),
+            nn.BatchNorm2d(backbone_channels),
+            nn.ReLU()
+        )
+        
+        # Final output - 3 channels for RGB
+        self.final_conv = nn.Sequential(
+            nn.Conv2d(backbone_channels, 3, 1),
             nn.Sigmoid()  # Output in [0, 1] range
         )
-        
-        self.pool = nn.MaxPool2d(2, 2)
-    
-    def _conv_block(self, in_ch, out_ch, dropout, padding_mode='reflect'):
-        """Convolutional block with reflect padding."""
-        return nn.Sequential(
-            nn.Conv2d(in_ch, out_ch, kernel_size=3, padding=1, padding_mode=padding_mode),
-            nn.BatchNorm2d(out_ch),
-            nn.ReLU(inplace=True),
-            nn.Dropout2d(dropout),
-            nn.Conv2d(out_ch, out_ch, kernel_size=3, padding=1, padding_mode=padding_mode),
-            nn.BatchNorm2d(out_ch),
-            nn.ReLU(inplace=True),
-        )
-    
-    def _upconv_block(self, in_ch, out_ch, dropout, padding_mode='reflect'):
-        """Upsampling + Convolutional block."""
-        return nn.Sequential(
-            nn.ConvTranspose2d(in_ch, out_ch, kernel_size=2, stride=2),
-            nn.Conv2d(out_ch, out_ch, kernel_size=3, padding=1, padding_mode=padding_mode),
-            nn.BatchNorm2d(out_ch),
-            nn.ReLU(inplace=True),
-            nn.Dropout2d(dropout),
-        )
-    
+
     def forward(self, x):
         """
-        Forward pass.
+        Forward pass through DeepLabV3+.
         
         Args:
-            x: Grayscale input (B, 1, H, W)
+            x: Grayscale input image (B, 1, H, W)
         
         Returns:
-            rgb: Predicted RGB image (B, 3, H, W)
+            colorized: Reconstructed RGB image (B, 3, H, W)
         """
+        input_size = x.size()[2:]
+        
         # ENCODER
-        e1 = self.enc1(x)
-        e2 = self.enc2(self.pool(e1))
-        e3 = self.enc3(self.pool(e2))
-        e4 = self.enc4(self.pool(e3))
+        e1 = self.encoder1(x)       # (B, 64, H, W)
+        e2 = self.encoder2(e1)      # (B, 128, H/2, W/2)
+        e3 = self.encoder3(e2)      # (B, 256, H/4, W/4)
         
-        # BOTTLENECK
-        b = self.bottleneck(self.pool(e4))
+        # ASPP
+        aspp_out = self.aspp(e3)    # (B, 256, H/4, W/4)
         
-        # DECODER with skip connections
-        d4 = self.dec4(b)
-        d4 = torch.cat([d4, e4], dim=1)
+        # DECODER with skip connection
+        d1 = F.interpolate(aspp_out, scale_factor=2, mode='bilinear', align_corners=True)
+        d1 = self.decoder1(d1)      # (B, 128, H/2, W/2)
         
-        d3 = self.dec3(d4)
-        d3 = torch.cat([d3, e3], dim=1)
+        # Skip connection from encoder2
+        d1 = torch.cat([d1, e2], dim=1)  # (B, 256, H/2, W/2)
+        d2 = self.decoder2(d1)      # (B, 64, H/2, W/2)
         
-        d2 = self.dec2(d3)
-        d2 = torch.cat([d2, e2], dim=1)
+        # Final upsampling to original resolution
+        out = F.interpolate(d2, size=input_size, mode='bilinear', align_corners=True)
+        colorized = self.final_conv(out)  # (B, 3, H, W)
         
-        d1 = self.dec1(d2)
-        d1 = torch.cat([d1, e1], dim=1)
-        
-        # FINAL OUTPUT
-        rgb = self.final(d1)
-        
-        return rgb
+        return colorized
     
     def get_encoder_features(self, x):
         """
-        Extract encoder features for clustering.
+        Extract encoder features for clustering (before ASPP).
         
         Args:
-            x: Grayscale input (B, 1, H, W)
+            x: Input image (B, 1, H, W)
         
         Returns:
-            features: Encoder output (B, C, H', W')
+            features: Encoder output (B, 256, H/4, W/4) from encoder3
         """
-        e1 = self.enc1(x)
-        e2 = self.enc2(self.pool(e1))
-        e3 = self.enc3(self.pool(e2))
-        e4 = self.enc4(self.pool(e3))
+        e1 = self.encoder1(x)
+        e2 = self.encoder2(e1)
+        e3 = self.encoder3(e2)
         
-        return e4
+        return e3
 
 
 def colorization_loss(pred_rgb, target_rgb):
