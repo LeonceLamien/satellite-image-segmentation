@@ -123,7 +123,7 @@ def visualize_context_prediction(model, dataset, n_samples=9):
     with torch.no_grad():
         for i in range(n_samples):
             idx = int(i * len(dataset) / n_samples)
-            masked, original, tile_name = dataset[idx]
+            masked, original, mask, tile_name = dataset[idx]  # 4 values: masked, original, mask, tile_name
             
             output = model(masked.unsqueeze(0)).squeeze(0)
             
@@ -151,6 +151,74 @@ def visualize_context_prediction(model, dataset, n_samples=9):
     
     plt.suptitle('Context Prediction Results', fontsize=16, fontweight='bold', y=0.98)
     plt.tight_layout(rect=[0, 0, 1, 0.97])
+    return fig
+
+
+def visualize_encoder_features(model, dataset, n_samples=6):
+    """Visualize encoder feature maps."""
+    
+    n_rows = n_samples
+    fig, axes = plt.subplots(n_rows, 5, figsize=(20, n_rows * 4))
+    
+    if n_rows == 1:
+        axes = axes.reshape(1, -1)
+    
+    model.eval()
+    with torch.no_grad():
+        for i in range(n_samples):
+            idx = int(i * len(dataset) / n_samples)
+            
+            # Get data based on task
+            data = dataset[idx]
+            if len(data) == 4:
+                # Context prediction returns 4 values
+                input_img, target_img, mask, tile_name = data
+            elif len(data) == 3:
+                # Denoising and colorization return 3 values
+                input_img, target_img, tile_name = data
+            else:
+                raise ValueError(f"Unexpected dataset output length: {len(data)}")
+            
+            # Get encoder features
+            features = model.get_encoder_features(input_img.unsqueeze(0)).squeeze(0)  # (512, 8, 8)
+            
+            # Original image (use target for display)
+            display_img = target_img.numpy()
+            if display_img.shape[0] == 1:  # Grayscale
+                display_img = np.stack([display_img[0]] * 3, axis=0)
+            display_img = display_img.transpose(1, 2, 0)
+            
+            axes[i, 0].imshow(display_img)
+            axes[i, 0].set_title(f'Image\n{tile_name}', fontsize=9)
+            axes[i, 0].axis('off')
+            
+            # Feature statistics
+            feature_np = features.numpy()
+            
+            # Mean across channels
+            axes[i, 1].imshow(feature_np.mean(axis=0), cmap='viridis')
+            axes[i, 1].set_title('Features Mean', fontsize=9)
+            axes[i, 1].axis('off')
+            
+            # Std across channels
+            axes[i, 2].imshow(feature_np.std(axis=0), cmap='plasma')
+            axes[i, 2].set_title('Features Std', fontsize=9)
+            axes[i, 2].axis('off')
+            
+            # Max across channels
+            axes[i, 3].imshow(feature_np.max(axis=0), cmap='inferno')
+            axes[i, 3].set_title('Features Max', fontsize=9)
+            axes[i, 3].axis('off')
+            
+            # Random channel
+            random_channel = np.random.randint(0, feature_np.shape[0])
+            axes[i, 4].imshow(feature_np[random_channel], cmap='coolwarm')
+            axes[i, 4].set_title(f'Channel {random_channel}', fontsize=9)
+            axes[i, 4].axis('off')
+    
+    plt.suptitle('Encoder Feature Maps (512 channels, 8×8 spatial)', 
+                 fontsize=16, fontweight='bold', y=0.995)
+    plt.tight_layout(rect=[0, 0, 1, 0.99])
     return fig
 
 
@@ -203,20 +271,34 @@ def main():
     print(f"✓ Model loaded: {model_path}")
     print(f"✓ Dataset loaded: {len(dataset)} images")
     
-    # Generate visualization
-    print(f"\nGenerating visualization for {args.n_samples} samples...")
+    # Create _Figures directory
+    figures_dir = os.path.join(args.exp, '_Figures')
+    os.makedirs(figures_dir, exist_ok=True)
+    
+    # Generate task results visualization
+    print(f"\nGenerating task results for {args.n_samples} samples...")
     
     if args.task == 'denoising':
-        fig = visualize_denoising(model, dataset, args.n_samples)
+        fig1 = visualize_denoising(model, dataset, args.n_samples)
     elif args.task == 'colorization':
-        fig = visualize_colorization(model, dataset, args.n_samples)
+        fig1 = visualize_colorization(model, dataset, args.n_samples)
     elif args.task == 'context_prediction':
-        fig = visualize_context_prediction(model, dataset, args.n_samples)
+        fig1 = visualize_context_prediction(model, dataset, args.n_samples)
     
-    # Save
-    save_path = f'visualization_{args.task}.png'
-    fig.savefig(save_path, dpi=150, bbox_inches='tight')
-    print(f"✓ Saved: {save_path}")
+    # Save task results
+    save_path1 = os.path.join(figures_dir, f'{args.task}_results.png')
+    fig1.savefig(save_path1, dpi=150, bbox_inches='tight')
+    print(f"✓ Saved: {save_path1}")
+    plt.close()
+    
+    # Generate encoder features visualization
+    print(f"\nGenerating encoder features visualization...")
+    fig2 = visualize_encoder_features(model, dataset, n_samples=6)
+    
+    # Save encoder features
+    save_path2 = os.path.join(figures_dir, f'{args.task}_encoder_features.png')
+    fig2.savefig(save_path2, dpi=150, bbox_inches='tight')
+    print(f"✓ Saved: {save_path2}")
     plt.close()
     
     print("\n" + "=" * 70)

@@ -266,14 +266,28 @@ def visualize_comparison(cluster_mask, gt_mask, n_clusters, save_path):
         n_clusters: Number of clusters
         save_path: Path to save figure
     """
-    # Create cluster colormap
-    cluster_colors = plt.cm.tab10(np.linspace(0, 1, n_clusters))
-    cluster_cmap = ListedColormap(cluster_colors)
+    # Use same colormap as ground truth for better comparison
+    # If n_clusters <= 5, use GT colors directly
+    # Otherwise extend with additional colors from tab10
+    if n_clusters <= 5:
+        cluster_cmap = GT_COLORMAP
+    else:
+        # Start with GT colors, add more if needed
+        gt_colors = np.array([
+            [0.0, 0.0, 0.0, 1.0],      # black
+            [0.0, 0.0, 1.0, 1.0],      # blue
+            [1.0, 0.0, 0.0, 1.0],      # red
+            [1.0, 1.0, 0.0, 1.0],      # yellow
+            [0.0, 0.5, 0.0, 1.0],      # green
+        ])
+        extra_colors = plt.cm.tab10(np.linspace(0.5, 1, n_clusters - 5))
+        all_colors = np.vstack([gt_colors, extra_colors])
+        cluster_cmap = ListedColormap(all_colors)
     
     fig, axes = plt.subplots(1, 2, figsize=(16, 8))
     
     # Pseudo-segmentation from clustering
-    im1 = axes[0].imshow(cluster_mask, cmap=cluster_cmap, vmin=0, vmax=n_clusters-1)
+    im1 = axes[0].imshow(cluster_mask, cmap=cluster_cmap, vmin=0, vmax=max(n_clusters-1, 4))
     axes[0].set_title('Pseudo-Segmentation (Clustering)', 
                      fontsize=18, fontweight='bold', pad=20)
     axes[0].axis('off')
@@ -347,8 +361,12 @@ def main():
         full_cluster_mask, full_gt_mask, args.n_clusters
     )
     
+    # Create _Figures directory
+    figures_dir = os.path.join(os.path.dirname(cluster_dir), '_Figures')
+    os.makedirs(figures_dir, exist_ok=True)
+    
     # Visualize
-    save_path = f"{cluster_dir}/clustering_vs_gt.png"
+    save_path = os.path.join(figures_dir, f"clustering_vs_gt_n{args.n_clusters}.png")
     visualize_comparison(full_cluster_mask, full_gt_mask, args.n_clusters, save_path)
     
     # Save full masks
