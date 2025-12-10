@@ -32,12 +32,12 @@ import argparse
 import pickle
 import sys
 
-sys.path.append('..')
+import sys, os
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 from proxy_tasks.denoising import DenoisingDataset, DenoisingAutoencoder
 from proxy_tasks.colorization import ColorizationDataset, ColorizationAutoencoder
 from proxy_tasks.context_prediction import ContextPredictionDataset, ContextPredictionAutoencoder
-
 
 class FeatureClusterer:
     """
