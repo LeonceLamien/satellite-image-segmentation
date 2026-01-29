@@ -1,0 +1,21 @@
+# Configuration for Colorization Proxy Task
+
+DATASET:
+  RESIZE_SHAPE: "64x64"
+
+TASK:
+  # No additional task-specific parameters
+
+MODEL:
+  BASE_CHANNELS: 64
+  DROPOUT: 0.1
+  DILATION_RATES: [3, 6, 9]
+
+TRAIN:
+  NUM_EPOCHS: 80
+  BATCH_SIZE: 16
+  LEARNING_RATE: 0.001
+  WEIGHT_DECAY: 0.00005
+  USE_SCHEDULER: true
+  EARLY_STOP_PATIENCE: 15
+  EARLY_STOP_MIN_DELTA: 0.00005

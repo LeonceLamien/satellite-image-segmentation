@@ -1,0 +1,21 @@
+# Configuration for Colorization Proxy Task
+
+DATASET:
+  RESIZE_SHAPE: "64x64"
+
+TASK:
+  # No additional task-specific parameters
+
+MODEL:
+  BASE_CHANNELS: 128  # Increased for more detail capacity
+  DROPOUT: 0.1  # Reduced to preserve more details
+  DILATION_RATES: [6, 12, 18]  # DeepLab ASPP dilation rates
+
+TRAIN:
+  NUM_EPOCHS: 80  # Increased for better convergence
+  BATCH_SIZE: 16
+  LEARNING_RATE: 0.001  # Reduced for finer convergence
+  WEIGHT_DECAY: 0.00005
+  USE_SCHEDULER: true
+  EARLY_STOP_PATIENCE: 15  # Increased patience
+  EARLY_STOP_MIN_DELTA: 0.00005  # Lower threshold for stopping
